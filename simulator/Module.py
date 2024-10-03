@@ -1,73 +1,116 @@
 import numpy as np
+from Circuit import QuantumCircuit
 
-from abc import ABC, abstractmethod
+class Gate():
+    I = np.array([[1,0],[0,1]], dtype=complex)
+    def __init__(self, index, pauli) -> None:
+        self.index = index
+        self.pauli = pauli
 
-class Module(ABC):
-    def __init__(self, idx:int, size:int) -> None:
-        self.idx = idx
-        self.size = size
-        self.gate = self.Gate()
+    def Generate(self, qc:QuantumCircuit):
+        gate = 1
+        for idx in range(qc.size):
+            if (idx == self.index):
+                gate = np.kron(self.pauli , gate)
+            else:
+                gate = np.kron(self.I, gate)
+        
+        self.gate = gate
 
-    @abstractmethod
-    def Gate(self):
-        pass
+class X(Gate):
+    def __init__(self, index) -> None:
+        X = np.array([[0,1],[1,0]])
+        super.__init__(index, X)
+
+class Y(Gate):
+    def __init__(self, index) -> None:
+        Y = np.array([[0, complex(0,-1)],[complex(0,1),0]])
+        super.__init__(index, Y)
+
+class Z(Gate):
+    def __init__(self, index) -> None:
+        Z = np.array([[1,0],[0,-1]])
+        super.__init__(index, Z)
+
+class H(Gate):
+    def __init__(self, index) -> None:
+        H = np.array([[1,1],[1,-1]]) / np.sqrt(2)
+        super().__init__(index, H)
+
+
+
+class ControlledGate(Gate):
+    ZERO = np.array([[1, 0], [0, 0]], dtype=complex)  # |0><0| projector
+    ONE = np.array([[0, 0], [0, 1]], dtype=complex)   # |1><1| projector
+    def __init__(self, control_index, target_index, pauli) -> None:
+        self.control_index = [control_index] if isinstance(control_index, int) else control_index
+        self.target_index = target_index
+        self.pauli = pauli
     
+    def Generate(self, qc: QuantumCircuit):
+        base = np.eye(2**qc.size)
 
-class X(Module):
-
-    X = np.array([[0,1],[1,0]])
-    I = np.array([[1,0],[0,1]])
-
-    def Gate(self):
+        mask = 1
         gate = 1
-        for idx in range(self.size):
-            if (idx == self.idx):
-                gate = np.kron(self.X , gate)
+        for idx in range(qc.size):
+            if (idx in self.control_index):
+                mask = np.kron(self.ONE, mask)
+                gate = np.kron(self.ONE, gate)
+            elif (idx == self.target_index):
+                mask = np.kron(self.I, mask)
+                gate = np.kron(self.pauli, gate)
             else:
+                mask = np.kron(self.I, mask)
                 gate = np.kron(self.I, gate)
-        return gate
+        
+        self.gate = base - mask + gate
 
-class Y(Module):
+class CX(ControlledGate):
+    def __init__(self, control_index, target_index) -> None:
+        X = np.array([[0,1],[1,0]])
+        super().__init__(control_index, target_index, X)
 
-    Y = np.array([[0, complex(0,-1)],[complex(0,1),0]])
-    I = np.array([[1,0],[0,1]])
+class CY(ControlledGate):
+    def __init__(self, control_index, target_index) -> None:
+        Y = np.array([[0, complex(0,-1)],[complex(0,1),0]])
+        super().__init__(control_index, target_index, Y)
 
-    def Gate(self):
-        gate = 1
-        for idx in range(self.size):
-            if (idx == self.idx):
-                gate = np.kron(self.Y , gate)
-            else:
-                gate = np.kron(self.I, gate)
-        return gate
+class CZ(ControlledGate):
+    def __init__(self, control_index, target_index) -> None:
+        Z = np.array([[1,0],[0,-1]])
+        super().__init__(control_index, target_index, Z)
 
-class Z(Module):
 
-    Z = np.array([[1,0],[0,-1]])
-    I = np.array([[1,0],[0,1]])
+class Swap(Gate):
+    def __init__(self, i, j) -> None:
+        self.i = i if i < j else j
+        self.j = j if i < j else i
 
-    def Gate(self):
-        gate=1
-        for idx in range(self.size):
-            if (idx == self.idx):
-                gate = np.kron(self.Z , gate)
-            else:
-                gate = np.kron(self.I, gate)
-        return gate
+    def Generate(self, qc: QuantumCircuit):
+        LOW = [
+            np.array([[1,0],[0,0]]),
+            np.array([[0,0],[1,0]]),
+            np.array([[0,1],[0,0]]),
+            np.array([[0,0],[0,1]]),
+        ]
+        HIGH = [
+            np.array([[1,0],[0,0]]),
+            np.array([[0,1],[0,0]]),
+            np.array([[0,0],[1,0]]),
+            np.array([[0,0],[0,1]]),
+        ]
+        I = np.array([[1,0],[0,1]])
 
-class Madamard(Module):
+        gate = 0
+        for phase in range(4):
+            quater_gate = 1
+            for idx in range(qc.size):
+                if (idx == i):
+                    quater_gate = np.kron(LOW[phase], quater_gate)
+                elif (idx == j):
+                    quater_gate = np.kron(HIGH[phase], quater_gate)
+                else:
+                    quater_gate = np.kron(I, quater_gate)
+            gate += quater_gate
 
-    H = np.array([[1,1],[1,-1]]) / np.sqrt(2)
-    I = np.array([[1,0],[0,1]])
-
-    def Gate(self):
-        gate=1
-        for idx in range(self.size):
-            if (idx == self.idx):
-                gate = np.kron(self.Z , gate)
-            else:
-                gate = np.kron(self.I, gate)
-        return gate
-
-if __name__ == "__main__":
-    print(Y(0, 3).gate)
+        self.gate = gate

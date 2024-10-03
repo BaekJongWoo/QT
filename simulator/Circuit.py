@@ -12,9 +12,9 @@ class QuantumCircuit():
             return zeroket
         return np.kron(zeroket, self.getInit(size-1))
 
-    def add(self, modules, idx):
-        new_modules = modules(idx, self.size)
-        self.gates.append(new_modules)
+    def add(self, new_gate):
+        new_gate.Generate(self)
+        self.gates.append(new_gate)
 
     def run(self):
         for gate in self.gates:
@@ -26,6 +26,10 @@ class QuantumCircuit():
 
 if __name__ == "__main__":
     qc = QuantumCircuit(3)
-    qc.add(X, 1)
+    qc.add(CX((2,1),0))
+
+    for gate in qc.gates:
+        print(gate.gate)
+
     qc.run()
-    print(qc.value)
+    # print(qc.value)
