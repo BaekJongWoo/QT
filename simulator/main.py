@@ -5,6 +5,7 @@ from Gate import *
 from Module import Module
 import COLOR
 import CONFIG
+from Basic import Rectangle
 
 # Pygame 초기화
 pygame.init()
@@ -31,18 +32,19 @@ ModuleList = [
 # 원의 반지름 설정
 radius = 20
 
-# 마우스가 눌린 상태를 추적하는 변수
-mouse_held = False
+held_module_idx = -1
+held_pos = (0,0)
 
-module_pos_list = []
+nearest_line = 
+
+module_rects = []
 def Iniitalize():
     for i in range(len(ModuleList)):
         xi = i % CONFIG.MODULES_PER_LINE
         yi = i // CONFIG.MODULES_PER_LINE
         x = 10 + xi * (10 + CONFIG.MODULE_SIZE)
         y = CONFIG.CIRCUIT_UI_HEIGHT + 10 + yi * (10 + CONFIG.MODULES_PER_LINE)
-        module_pos_list.append((x,y))
-
+        module_rects.append(Rectangle(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE))
 
 def Update():
     for event in pygame.event.get():
@@ -50,15 +52,28 @@ def Update():
             pygame.quit()
             sys.exit()                    
 
+        hovering_idx = -1
+        for i, rect in enumerate(module_rects):
+            mx, my = pygame.mouse.get_pos()
+            if (rect.Contains(mx, my)):
+                hovering_idx = i
+                break
+        
+        global held_module_idx, held_pos
+
         # 마우스 버튼을 눌렀을 때
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:  # 왼쪽 버튼 클릭
-                mouse_held = True
+                if hovering_idx != -1:
+                    rect = module_rects[hovering_idx]
+                    mx, my = pygame.mouse.get_pos()
+                    held_module_idx = hovering_idx
+                    held_pos = (mx - rect.x, my - rect.y)
 
         # 마우스 버튼을 뗐을 때
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:  # 왼쪽 버튼 클릭 해제
-                mouse_held = False
+                held_module_idx = -1
 
 def Draw():
     # 배경 화면을 흰색으로 채우기
@@ -66,11 +81,7 @@ def Draw():
 
     DrawBaseLine()
     DrawModulesBase()
-
-    # 마우스를 누르고 있는 동안 원을 그리기
-    if mouse_held:
-        pos = pygame.mouse.get_pos()
-        pygame.draw.circle(screen, COLOR.RED, pos, radius)
+    DrawHoldingModule()
 
     # 화면 업데이트
     pygame.display.flip()
@@ -89,8 +100,15 @@ def DrawBaseLine():
 
 def DrawModulesBase():
     for i, module in enumerate(ModuleList):
-        rect = module_pos_list[i]
-        module.Draw(screen, moduleFont, rect[0], rect[1])
+        rect = module_rects[i]
+        module.Draw(screen, moduleFont, rect)
+
+def DrawHoldingModule():
+    if (held_module_idx != -1):
+        mx, my = pygame.mouse.get_pos()
+        rect = Rectangle(mx - held_pos[0], my - held_pos[1], CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
+        module = ModuleList[held_module_idx]
+        module.Draw(screen, moduleFont, rect)
 
 # 게임 루프
 running = True
