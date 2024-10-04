@@ -1,4 +1,4 @@
-from Module import *
+from Gate import *
 
 class QuantumCircuit():
     def __init__(self, size):
@@ -26,10 +26,7 @@ class QuantumCircuit():
 
 if __name__ == "__main__":
     qc = QuantumCircuit(3)
-    qc.add(CX((2,1),0))
-
-    for gate in qc.gates:
-        print(gate.gate)
-
+    qc.add(X(0))
+    qc.add(Swap(0, 2))
     qc.run()
-    # print(qc.value)
+    print(qc.value)

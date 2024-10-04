@@ -1,116 +1,16 @@
-import numpy as np
-from Circuit import QuantumCircuit
+import pygame
+import COLOR
+import CONFIG
 
-class Gate():
-    I = np.array([[1,0],[0,1]], dtype=complex)
-    def __init__(self, index, pauli) -> None:
-        self.index = index
-        self.pauli = pauli
+class Module():
+    def __init__(self, text, color) -> None:
+        self.text = text  # 텍스트, 안티앨리어싱, 색상
+        self.color = color
 
-    def Generate(self, qc:QuantumCircuit):
-        gate = 1
-        for idx in range(qc.size):
-            if (idx == self.index):
-                gate = np.kron(self.pauli , gate)
-            else:
-                gate = np.kron(self.I, gate)
-        
-        self.gate = gate
-
-class X(Gate):
-    def __init__(self, index) -> None:
-        X = np.array([[0,1],[1,0]])
-        super.__init__(index, X)
-
-class Y(Gate):
-    def __init__(self, index) -> None:
-        Y = np.array([[0, complex(0,-1)],[complex(0,1),0]])
-        super.__init__(index, Y)
-
-class Z(Gate):
-    def __init__(self, index) -> None:
-        Z = np.array([[1,0],[0,-1]])
-        super.__init__(index, Z)
-
-class H(Gate):
-    def __init__(self, index) -> None:
-        H = np.array([[1,1],[1,-1]]) / np.sqrt(2)
-        super().__init__(index, H)
-
-
-
-class ControlledGate(Gate):
-    ZERO = np.array([[1, 0], [0, 0]], dtype=complex)  # |0><0| projector
-    ONE = np.array([[0, 0], [0, 1]], dtype=complex)   # |1><1| projector
-    def __init__(self, control_index, target_index, pauli) -> None:
-        self.control_index = [control_index] if isinstance(control_index, int) else control_index
-        self.target_index = target_index
-        self.pauli = pauli
-    
-    def Generate(self, qc: QuantumCircuit):
-        base = np.eye(2**qc.size)
-
-        mask = 1
-        gate = 1
-        for idx in range(qc.size):
-            if (idx in self.control_index):
-                mask = np.kron(self.ONE, mask)
-                gate = np.kron(self.ONE, gate)
-            elif (idx == self.target_index):
-                mask = np.kron(self.I, mask)
-                gate = np.kron(self.pauli, gate)
-            else:
-                mask = np.kron(self.I, mask)
-                gate = np.kron(self.I, gate)
-        
-        self.gate = base - mask + gate
-
-class CX(ControlledGate):
-    def __init__(self, control_index, target_index) -> None:
-        X = np.array([[0,1],[1,0]])
-        super().__init__(control_index, target_index, X)
-
-class CY(ControlledGate):
-    def __init__(self, control_index, target_index) -> None:
-        Y = np.array([[0, complex(0,-1)],[complex(0,1),0]])
-        super().__init__(control_index, target_index, Y)
-
-class CZ(ControlledGate):
-    def __init__(self, control_index, target_index) -> None:
-        Z = np.array([[1,0],[0,-1]])
-        super().__init__(control_index, target_index, Z)
-
-
-class Swap(Gate):
-    def __init__(self, i, j) -> None:
-        self.i = i if i < j else j
-        self.j = j if i < j else i
-
-    def Generate(self, qc: QuantumCircuit):
-        LOW = [
-            np.array([[1,0],[0,0]]),
-            np.array([[0,0],[1,0]]),
-            np.array([[0,1],[0,0]]),
-            np.array([[0,0],[0,1]]),
-        ]
-        HIGH = [
-            np.array([[1,0],[0,0]]),
-            np.array([[0,1],[0,0]]),
-            np.array([[0,0],[1,0]]),
-            np.array([[0,0],[0,1]]),
-        ]
-        I = np.array([[1,0],[0,1]])
-
-        gate = 0
-        for phase in range(4):
-            quater_gate = 1
-            for idx in range(qc.size):
-                if (idx == self.i):
-                    quater_gate = np.kron(LOW[phase], quater_gate)
-                elif (idx == self.j):
-                    quater_gate = np.kron(HIGH[phase], quater_gate)
-                else:
-                    quater_gate = np.kron(I, quater_gate)
-            gate += quater_gate
-
-        self.gate = gate
+    def Draw(self, screen, font, x, y):
+        rect = (x,y,CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
+        rect_center = (x + CONFIG.MODULE_SIZE / 2, y + CONFIG.MODULE_SIZE)
+        pygame.draw.rect(screen, self.color, rect)
+        text = font.render(self.text, True, COLOR.TEXT)
+        text_rect = text.get_rect(center=rect_center)
+        screen.blit(text, text_rect)
