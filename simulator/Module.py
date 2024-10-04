@@ -105,9 +105,9 @@ class Swap(Gate):
         for phase in range(4):
             quater_gate = 1
             for idx in range(qc.size):
-                if (idx == i):
+                if (idx == self.i):
                     quater_gate = np.kron(LOW[phase], quater_gate)
-                elif (idx == j):
+                elif (idx == self.j):
                     quater_gate = np.kron(HIGH[phase], quater_gate)
                 else:
                     quater_gate = np.kron(I, quater_gate)
