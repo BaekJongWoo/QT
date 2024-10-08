@@ -58,7 +58,7 @@ def is_unitary(gate_array):
         return False
     return np.allclose(np.dot(gate_array, gate_array.conj().T), np.eye(gate_array.shape[0]), atol=1e-10)
 
-class Custom(Gate):
+class CustomGate(Gate):
     def __init__(self, index, gate_array: np.array) -> None:
         # check condition
         Custom = gate_array
@@ -143,3 +143,23 @@ class Swap(Gate):
             gate += quater_gate
 
         self.gate = gate
+
+
+class GateList():
+    def __init__(self):
+        self.gatelist = []
+    
+    def AddGate(self, gate: Gate):
+        self.gatelist.append(gate)
+
+    def Generate(self, qc):
+        gate = 1
+        for i in self.gatelist:
+            i.Generate(qc)
+            gate = np.dot(i.gate, gate)
+        self.gate = gate
+
+class Deutsch(GateList):
+    def __init__(self):
+        self.gatelist = [X(1),H(0),H(1) ,H(0)]  #oracle 추가 안함!!!
+        super().__init__()
