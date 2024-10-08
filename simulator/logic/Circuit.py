@@ -1,4 +1,4 @@
-from Gate import *
+import numpy as np
 
 class QuantumCircuit():
     def __init__(self, size):
@@ -22,11 +22,3 @@ class QuantumCircuit():
 
     def draw(self):
         pass
-
-
-if __name__ == "__main__":
-    qc = QuantumCircuit(3)
-    qc.add(X(0))
-    qc.add(Swap(0, 2))
-    qc.run()
-    print(qc.value)
