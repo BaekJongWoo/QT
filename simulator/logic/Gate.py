@@ -36,8 +36,38 @@ class H(Gate):
         H = np.array([[1,1],[1,-1]]) / np.sqrt(2)
         super().__init__(index, H)
 
+class R(Gate):
+    def __init__(self, index, phase) -> None:
+        G = np.array([[1, 0], [0, np.exp(phase*complex(0,1))]])
+        super().__init__(index, G)
 
+class S(Gate): 
+    def __init__(self, index) -> None:
+        S = np.array([[1,0],[0,complex(0,1)]]) 
+        super().__init__(index, S)
 
+class T(Gate): 
+    def __init__(self, index) -> None:
+        T = np.array([[1,0],[0, np.exp(complex(0,1)*np.pi/4)]]) 
+        super().__init__(index, T)
+
+def is_unitary(gate_array):
+    if gate_array.size[0] != 2: ## 일단은 2x2만
+        return False
+    if gate_array[0] != gate_array[1]:
+        return False
+    return np.allclose(np.dot(gate_array, gate_array.conj().T), np.eye(gate_array.shape[0]), atol=1e-10)
+
+class CustomGate(Gate):
+    def __init__(self, index, gate_array: np.array) -> None:
+        # check condition
+        Custom = gate_array
+        if is_unitary(Custom):
+            super().__init__(index, Custom)
+        else: 
+            print("This gate is not appropriate!")
+            super().__init__(index, np.eye(2))
+            
 class ControlledGate(Gate):
     ZERO = np.array([[1, 0], [0, 0]], dtype=complex)  # |0><0| projector
     ONE = np.array([[0, 0], [0, 1]], dtype=complex)   # |1><1| projector
@@ -113,3 +143,23 @@ class Swap(Gate):
             gate += quater_gate
 
         self.gate = gate
+
+
+class GateList():
+    def __init__(self):
+        self.gatelist = []
+    
+    def AddGate(self, gate: Gate):
+        self.gatelist.append(gate)
+
+    def Generate(self, qc):
+        gate = 1
+        for i in self.gatelist:
+            i.Generate(qc)
+            gate = np.dot(i.gate, gate)
+        self.gate = gate
+
+class Deutsch(GateList):
+    def __init__(self):
+        self.gatelist = [X(1),H(0),H(1) ,H(0)]  #oracle 추가 안함!!!
+        super().__init__()
