@@ -51,6 +51,23 @@ class T(Gate):
         T = np.array([[1,0],[0, np.exp(complex(0,1)*np.pi/4)]]) 
         super().__init__(index, T)
 
+def is_unitary(gate_array):
+    if gate_array.size[0] != 2: ## 일단은 2x2만
+        return False
+    if gate_array[0] != gate_array[1]:
+        return False
+    return np.allclose(np.dot(gate_array, gate_array.conj().T), np.eye(gate_array.shape[0]), atol=1e-10)
+
+class Custom(Gate):
+    def __init__(self, index, gate_array: np.array) -> None:
+        # check condition
+        Custom = gate_array
+        if is_unitary(Custom):
+            super().__init__(index, Custom)
+        else: 
+            print("This gate is not appropriate!")
+            super().__init__(index, np.eye(2))
+            
 class ControlledGate(Gate):
     ZERO = np.array([[1, 0], [0, 0]], dtype=complex)  # |0><0| projector
     ONE = np.array([[0, 0], [0, 1]], dtype=complex)   # |1><1| projector
