@@ -1,5 +1,6 @@
+from __future__ import annotations
 import pygame
-import pygame.rect as Rect
+from pygame import Rect
 import sys
 from logic.Circuit import QuantumCircuit
 from logic.Gate import *
@@ -18,6 +19,7 @@ class QuantumSimulatorApp:
         self.moduleFont = pygame.font.Font(None, 24)
 
         self.qc = QuantumCircuit(3)
+        self.GrabModuleIdx = -1
 
         self.modules = [
             Module("H", COLOR.BLUSHRED),
@@ -27,12 +29,17 @@ class QuantumSimulatorApp:
         ]
 
         self.ui_elements: list[BaseUI] = []
-        self.AddUIElement(QuantumCircuitUI(rect=Rect(0,0, CONFIG.SCREEN_WIDTH, CONFIG.CIRCUIT_UI_HEIGHT)))
-        # self.AddUIElement(ModuleSelectorUI())
+        self.AddUIElement(QuantumCircuitUI(self, Rect(0,
+                                                      0, 
+                                                      CONFIG.SCREEN_WIDTH, 
+                                                      CONFIG.SCREEN_HEIGHT * 0.5)))
+        self.AddUIElement(ModuleSelectorUI(self, Rect(0,
+                                                      CONFIG.SCREEN_HEIGHT * 0.5, 
+                                                      CONFIG.SCREEN_WIDTH * 0.2,
+                                                      CONFIG.SCREEN_HEIGHT * 0.5)))
         # self.AddUIElement(HoldingModuleUI())
 
     def AddUIElement(self, newUIElement: BaseUI):
-        newUIElement.bind(self)
         self.ui_elements.append(newUIElement)
 
     def run(self):
