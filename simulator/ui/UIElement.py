@@ -24,22 +24,71 @@ class BaseUI:
 class QuantumCircuitUI(BaseUI):
     LINEWIDTH = 2
     LINESPACE = 40
+
+    LINEMARGINLEFT = 50
+    LINEMARGINRIGHT = 30
+
+    MODULEMARGIN = 10
+
+    def __init__(self, app, rect):
+        super().__init__(app, rect)
+        self.hovering_line_idx = -1
+        self.mouse_pressed = False
     
     def Update(self, event):
-        return super().Update(event)
-    
+        if self.App.held_module_idx != -1:
+            mouse_pos = pygame.mouse.get_pos()
+            self.hovering_line_idx = -1
+            for i in range(self.App.qbit_num):
+                min = (i + 0.5) * self.LINESPACE
+                max = (i + 1.5) * self.LINESPACE
+                if min < mouse_pos[1] < max:
+                    self.hovering_line_idx = i
+                    break
+        
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                self.mouse_pressed = True
+
+        if event.type == pygame.MOUSEBUTTONUP:
+            if self.mouse_pressed:
+                self.JustReleased()
+            self.mouse_pressed = False
+
+    def JustReleased(self):
+        if self.App.held_module_idx != -1:
+            self.App.AddModule(self.App.held_module_idx, self.hovering_line_idx)
+        self.hovering_line_idx = -1
+
     def Draw(self):
-        circuit = self.App.qc
-        for i in range(circuit.size):
+        # draw base lines
+        for i in range(self.App.qbit_num):
             y = (i + 1) * self.LINESPACE
             text = self.App.baseFont.render(f"q[{i}]", True, COLOR.BASETEXT)  # Text rendering
             text_rect = text.get_rect(center=(25, y))
             self.Screen.blit(text, text_rect)
-            pygame.draw.line(self.Screen, COLOR.BASELINE, (50, y), (CONFIG.SCREEN_WIDTH - 30, y), width=self.LINEWIDTH)
+            pygame.draw.line(self.Screen, COLOR.BASELINE, (self.LINEMARGINLEFT, y), (CONFIG.SCREEN_WIDTH - self.LINEMARGINRIGHT, y), width=self.LINEWIDTH)
 
-        y = (circuit.size + 1) * self.LINESPACE
-        pygame.draw.line(self.Screen, COLOR.BASELINE, (50, y - 2), (CONFIG.SCREEN_WIDTH - 30, y - 2), width=self.LINEWIDTH // 2)
-        pygame.draw.line(self.Screen, COLOR.BASELINE, (50, y + 2), (CONFIG.SCREEN_WIDTH - 30, y + 2), width=self.LINEWIDTH // 2)
+        # draw measure line
+        y = (self.App.qbit_num + 1) * self.LINESPACE
+        pygame.draw.line(self.Screen, COLOR.BASELINE, (self.LINEMARGINLEFT, y - 2), (CONFIG.SCREEN_WIDTH - self.LINEMARGINRIGHT, y - 2), width=self.LINEWIDTH // 2)
+        pygame.draw.line(self.Screen, COLOR.BASELINE, (self.LINEMARGINLEFT, y + 2), (CONFIG.SCREEN_WIDTH - self.LINEMARGINRIGHT, y + 2), width=self.LINEWIDTH // 2)
+
+        # draw line modules
+        for yi, line_modules in enumerate(self.App.module_lines):
+            for xi, module_idx in enumerate(line_modules):
+                x = self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+                y = (yi + 1) * self.LINESPACE - (CONFIG.MODULE_SIZE / 2)
+                rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
+                self.App.modules[module_idx].Draw(self.Screen, self.App.moduleFont, rect)
+        
+        # draw hovering
+        if self.hovering_line_idx != -1:
+            xi = len(self.App.module_lines[self.hovering_line_idx])
+            x = self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (self.MODULEMARGIN + CONFIG.MODULE_SIZE)
+            y = self.LINESPACE * (self.hovering_line_idx + 1) - CONFIG.MODULE_SIZE / 2
+            rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
+            pygame.draw.rect(self.Screen, COLOR.WHITE, rect)
 
 # Module Selector UI Class
 class ModuleSelectorUI(BaseUI):
@@ -71,33 +120,42 @@ class ModuleSelectorUI(BaseUI):
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 if self.button_pressed == False: # clicked
-                    self.App.GrabModuleIdx = self.get_hovering_module_idx(event.pos)
+                    self.HeldUpdate(event)
                 self.button_pressed = True
         
         if event.type == pygame.MOUSEBUTTONUP:
             if event.button == 1:
                 self.button_pressed = 0
 
-    def get_hovering_module_idx(self, mouse_pos):
-        x = mouse_pos[0]
-        y = mouse_pos[1]
+    def HeldUpdate(self, event: Event):
+        mouse_pos_rect = Rect(event.pos[0], event.pos[1], 1, 1)
+        held_idx = self.get_hovering_module_idx(mouse_pos_rect)
+        if held_idx != -1:
+            module_rect = self.module_rects[held_idx]
+            held_pos =  (mouse_pos_rect.x - module_rect.x,
+                         mouse_pos_rect.y - module_rect.y)
+            self.App.held_pos = held_pos
+        
+        self.App.held_module_idx = held_idx 
+
+    def get_hovering_module_idx(self, mouse_pos_rect: Rect):
         for i, rect in enumerate(self.module_rects):
-            if rect.contains(Rect(x,y,1,1)):
+            if rect.contains(mouse_pos_rect):
                 return i
         return -1
 
 # Holding Module UI Class
 class HoldingModuleUI(BaseUI):
+    def __init__(self, app):
+        super().__init__(app, None)
+
     def Update(self, event: Event):
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            self.App.GrabModuleIdx = -1
-        
-    def draw(self):
-        border_rect = pygame.Rect(5, CONFIG.CIRCUIT_UI_HEIGHT + CONFIG.MODULE_SELECTOR_HEIGHT + 5, CONFIG.SCREEN_WIDTH - 10, CONFIG.HOLDING_MODULE_HEIGHT - 10)
-        self.draw_border(border_rect)
-        
-        if self.held_module_idx != -1:
+            self.App.held_module_idx = -1
+    
+    def Draw(self):
+        if self.App.held_module_idx != -1:
             mx, my = pygame.mouse.get_pos()
-            rect = Rectangle(mx - self.held_pos[0], my - self.held_pos[1], CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-            module = self.modules[self.held_module_idx]
-            module.Draw(self.screen, moduleFont, rect)
+            rect = Rect(mx - self.App.held_pos[0], my - self.App.held_pos[1], CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
+            module = self.App.modules[self.App.held_module_idx]
+            module.Draw(self.Screen, self.App.moduleFont, rect)
