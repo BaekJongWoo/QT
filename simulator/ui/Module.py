@@ -4,9 +4,10 @@ from pygame.font import Font
 import ui.COLOR as COLOR
 
 class Module():
-    def __init__(self, text, color) -> None:
+    def __init__(self, text, color, gate) -> None:
         self.text = text  # 텍스트, 안티앨리어싱, 색상
         self.color = color
+        self.gate = gate
 
     def Draw(self, screen: Surface, font: Font, rect: Rect):
         pygame.draw.rect(screen, self.color, rect)

@@ -19,6 +19,4 @@ class QuantumCircuit():
     def run(self):
         for gate in self.gates:
             self.value = np.dot(gate.gate, self.value)
-
-    def draw(self):
-        pass
+        return self.value
