@@ -2,16 +2,17 @@ from __future__ import annotations
 import pygame
 from pygame import Rect
 import sys
-from logic.Circuit import QuantumCircuit
-import logic.Gate as Gate
+from static import Gate
 from ui.Module import Module
 from ui.UIElement import *
 import ui.COLOR as COLOR
 import ui.CONFIG as CONFIG
 
+import numpy as np
+
 class QuantumSimulatorApp:
     
-    held_module_idx = -1
+    held_module_key = "I"
     held_pos = (0,0)
 
     def __init__(self, qbit_num):
@@ -22,16 +23,19 @@ class QuantumSimulatorApp:
         self.baseFont = pygame.font.Font(fontPath, 15)
         self.moduleFont = pygame.font.Font(None, 24)
 
+        self.max_module_per_line = 10
         self.qbit_num = qbit_num
         self.result: list[complex] = [0 for _ in range(2 ** qbit_num)]
-        self.module_lines = [[] for _ in range(qbit_num)]
+        self.module_lines = np.full((self.max_module_per_line, qbit_num), "I")
 
-        self.modules: list[Module] = [
-            Module("H", COLOR.BLUSHRED, Gate.H),
-            Module("X", COLOR.SHADYSKY, Gate.X),
-            Module("Y", COLOR.SHADYSKY, Gate.Y),
-            Module("Z", COLOR.SHADYSKY, Gate.Z),
-        ]
+        self.modules: dict[Module] = {
+            "H": Module("H", COLOR.BLUSHRED),
+            "X": Module("X", COLOR.SHADYSKY),
+            "Y": Module("Y", COLOR.SHADYSKY),
+            "Z": Module("Z", COLOR.SHADYSKY),
+            "R": Module("R", COLOR.YELLOW),
+            "C": Module("C", COLOR.GRAY)
+        }
 
         y_button = 0
         y_circuit = CONFIG.BUTTONSECTIONHEIGHT
@@ -57,19 +61,26 @@ class QuantumSimulatorApp:
 
         self.Compute()
 
+    def Clear(self):
+        self.module_lines = np.full((self.max_module_per_line, self.qbit_num), "I")
+
     def AddUIElement(self, newUIElement: BaseUI):
         self.ui_elements.append(newUIElement)
 
     def Compute(self):
-        qc = QuantumCircuit(self.qbit_num)
-        for line_idx, line in enumerate(self.module_lines):
-            for module_idx in line:
-                module:Module = self.modules[module_idx]
-                qc.add(module.gate(line_idx))
-        self.result = qc.run()                
+        q_value = np.zeros((2**self.qbit_num, 1), dtype=complex)
+        q_value[0] = 1
+        for line in self.module_lines:
+            gate = Gate.Generate(line)
+            q_value = np.dot(gate, q_value)
+        self.result = q_value
 
-    def AddModule(self, module_idx, line_idx):
-        self.module_lines[line_idx].append(module_idx)
+    def AddModule(self, idx, q_idx, module_key):
+        self.module_lines[idx, q_idx] = module_key
+        self.Compute()
+
+    def RemoveModule(self, idx, q_idx):
+        self.module_lines[idx, q_idx] = "I"
         self.Compute()
 
     def run(self):
