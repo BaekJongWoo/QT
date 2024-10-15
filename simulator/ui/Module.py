@@ -13,3 +13,8 @@ class Module():
         text = font.render(self.text, True, COLOR.TEXT)
         text_rect = text.get_rect(center=rect.center)
         screen.blit(text, text_rect)
+
+class PresetModule(Module):
+    def __init__(self, text, color, gates) -> None:
+        self.gates = gates
+        super().__init__(text, color)
