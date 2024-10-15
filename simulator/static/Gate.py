@@ -4,15 +4,15 @@ I = np.array([[1,0],[0,1]], dtype=complex)
 ZERO = np.array([[1, 0], [0, 0]], dtype=complex)  # |0><0| projector
 ONE = np.array([[0, 0], [0, 1]], dtype=complex)   # |1><1| projector
 
-S = np.array([[1,0],[0,complex(0,1)]]) 
-T = np.array([[1,0],[0, np.exp(complex(0,1)*np.pi/4)]])
-
 GATES = {
     "I": np.array([[1,0],[0,1]], dtype=complex),
     "X": np.array([[0,1],[1,0]]),
-    "Y": np.array([[0, complex(0,-1)],[complex(0,1),0]]),
-    "Z": np.array([[1,0],[0,-1]]),
-    "H": np.array([[1,1],[1,-1]]) / np.sqrt(2)
+    "T": np.array([[1,0],[0, np.exp(complex(0,1)*np.pi/4)]]), # 45
+    "S":np.array([[1,0],[0,complex(0,1)]]), # 90
+    "Z": np.array([[1,0],[0,-1]]), #180
+    "Y": np.array([[0, complex(0,-1)],[complex(0,1),0]]), # 270
+    "H": np.array([[1,1],[1,-1]]) / np.sqrt(2),
+    "R": np.array([[1,0],[0,1]])
 }
 
 def Generate(gate_keys):

@@ -148,22 +148,35 @@ class QuantumCircuitUI(BaseUI):
         pygame.draw.line(self.Screen, COLOR.BASELINE, (self.LINEMARGINLEFT, y - 2), (CONFIG.SCREEN_WIDTH - self.LINEMARGINRIGHT, y - 2), width=self.LINEWIDTH // 2)
         pygame.draw.line(self.Screen, COLOR.BASELINE, (self.LINEMARGINLEFT, y + 2), (CONFIG.SCREEN_WIDTH - self.LINEMARGINRIGHT, y + 2), width=self.LINEWIDTH // 2)
 
+        # control line
+        for xi, line in enumerate(self.App.CurrentCircuit):
+            if "C" in line:
+                x = self.rect.left + self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN) + CONFIG.MODULE_SIZE / 2
+                y_min = self.rect.top + (0.5) * self.LINESPACE
+                y_max = self.rect.top + (self.App.qbit_num - 0.5) * self.LINESPACE
+                pygame.draw.line(self.Screen, COLOR.GRAY, (x, y_min), (x, y_max), 2)
+
         # draw line modules
-        for (xi, yi), module_key in np.ndenumerate(self.App.CurrentCircuit):
-            if module_key == "I":
-                continue
-            if module_key in self.App.modules:
-                x = self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
-                y = self.rect.y + (yi + 0.5) * self.LINESPACE - (CONFIG.MODULE_SIZE / 2)
-                rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-                self.App.modules[module_key].Draw(self.Screen, self.App.moduleFont, rect)
-            elif yi == 0:
-                x = self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
-                y = self.rect.top + (0.5) * self.LINESPACE - CONFIG.MODULE_SIZE / 2
-                height = self.App.qbit_num * (CONFIG.MODULE_SIZE + self.MODULEMARGIN) - self.MODULEMARGIN
-                rect = Rect(x,y,CONFIG.MODULE_SIZE, height)
-                self.App.presets[module_key].Draw(self.Screen, self.App.baseFont, rect)
-        
+        for xi, line in enumerate(self.App.CurrentCircuit):
+            for yi, module_key in enumerate(line):
+                if module_key == "I":
+                    continue
+                if module_key in self.App.modules:
+                    x = self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+                    y = self.rect.y + (yi + 0.5) * self.LINESPACE - (CONFIG.MODULE_SIZE / 2)
+                    rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
+                    self.App.modules[module_key].Draw(self.Screen, self.App.moduleFont, rect)
+
+                    if "C" in line:
+                        pygame.draw.rect(self.Screen, COLOR.GRAY, rect, 3)
+
+                elif yi == 0:
+                    x = self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+                    y = self.rect.top + (0.5) * self.LINESPACE - CONFIG.MODULE_SIZE / 2
+                    height = self.App.qbit_num * (CONFIG.MODULE_SIZE + self.MODULEMARGIN) - self.MODULEMARGIN
+                    rect = Rect(x,y,CONFIG.MODULE_SIZE, height)
+                    self.App.presets[module_key].Draw(self.Screen, self.App.baseFont, rect)
+
         # draw hovering
         if self.App.held_module_key != "I":
             if self.hovering_coord != (-1, -1):

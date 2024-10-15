@@ -14,6 +14,13 @@ class Module():
         text_rect = text.get_rect(center=rect.center)
         screen.blit(text, text_rect)
 
+class ControlledModule(Module):
+    def Draw(self, screen, font, rect):
+        pygame.draw.circle(screen, self.color, rect.center, rect.height / 2)
+        text = font.render(self.text, True, COLOR.TEXT)
+        text_rect = text.get_rect(center=rect.center)
+        screen.blit(text, text_rect)
+
 class PresetModule(Module):
     def __init__(self, text, color, gates) -> None:
         self.gates = gates

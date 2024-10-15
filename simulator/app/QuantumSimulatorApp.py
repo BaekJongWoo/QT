@@ -3,7 +3,7 @@ import pygame
 from pygame import Rect
 import sys
 from static import Gate
-from ui.Module import Module
+from ui.Module import ControlledModule, Module
 from ui.UIElement import *
 import ui.COLOR as COLOR
 import ui.CONFIG as CONFIG
@@ -33,10 +33,12 @@ class QuantumSimulatorApp:
         self.modules: dict[str, Module] = {
             "H": Module("H", COLOR.BLUSHRED),
             "X": Module("X", COLOR.SHADYSKY),
-            "Y": Module("Y", COLOR.SHADYSKY),
+            "T": Module("T", COLOR.YELLOW),
+            "S": Module("S", COLOR.YELLOW),
             "Z": Module("Z", COLOR.SHADYSKY),
+            "Y": Module("Y", COLOR.SHADYSKY),
             "R": Module("R", COLOR.YELLOW),
-            "C": Module("C", COLOR.GRAY)
+            "C": Module("C", COLOR.GRAY),
         }
 
         self.presets: dict[str, PresetModule] = {
