@@ -38,10 +38,10 @@ class H(Gate):
 
 class R(Gate):
     def __init__(self, index, phase) -> None:
-        G = np.array([[1, 0], [0, np.exp(phase*complex(0,1))]])
-        super().__init__(index, G)
+        R = np.array([[1, 0], [0, np.exp(phase*complex(0,1))]]) #_
+        super().__init__(index, R)
 
-class S(Gate): 
+class S(Gate):
     def __init__(self, index) -> None:
         S = np.array([[1,0],[0,complex(0,1)]]) 
         super().__init__(index, S)
