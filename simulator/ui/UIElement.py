@@ -4,7 +4,9 @@ from pygame import Rect, Surface
 from pygame.event import Event
 from ui import COLOR, CONFIG
 import app.QuantumSimulatorApp as qs
-import app.EventHandler as EH 
+import static.EventHandler as EH 
+
+import numpy as np
 
 class BaseUI:
     def __init__(self, app: qs.QuantumSimulatorApp, rect: Rect):
@@ -67,7 +69,7 @@ class EraseButtonUI(ButtonUI):
 
     def Update(self, event):
         if EH.IsLMBClicked(event) and self.is_hovering:
-            self.App.module_lines = [[] for _ in range(self.App.qbit_num)]
+            self.App.Clear()
             self.App.Compute()
         return super().Update(event)
 
@@ -83,33 +85,41 @@ class QuantumCircuitUI(BaseUI):
 
     def __init__(self, app, rect):
         super().__init__(app, rect)
-        self.hovering_line_idx = -1
+        self.hovering_coord = (-1, -1)
         self.mouse_pressed = False
     
     def Update(self, event):
-        if self.App.held_module_idx != -1:
-            mouse_pos = pygame.mouse.get_pos()
-            self.hovering_line_idx = -1
-            for i in range(self.App.qbit_num):
-                min = self.rect.y + (i + 0) * self.LINESPACE
-                max = self.rect.y + (i + 1) * self.LINESPACE
-                if min < mouse_pos[1] < max:
-                    self.hovering_line_idx = i
-                    break
-        
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:
-                self.mouse_pressed = True
 
-        if event.type == pygame.MOUSEBUTTONUP:
-            if self.mouse_pressed:
-                self.JustReleased()
-            self.mouse_pressed = False
+        mouse_pos = pygame.mouse.get_pos()
+        target_pos = (mouse_pos[0] - self.App.held_pos[0] + CONFIG.MODULE_SIZE / 2, mouse_pos[1] - self.App.held_pos[1] + CONFIG.MODULE_SIZE / 2)
+
+        for (xi,yi), value in np.ndenumerate(self.App.module_lines):
+            x = self.rect.left + self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+            y = self.rect.top + (yi + 0.5) * self.LINESPACE - self.LINESPACE / 2
+            rect = Rect(x, y, CONFIG.MODULE_SIZE + self.MODULEMARGIN, self.LINESPACE)
+            if rect.contains(Rect(target_pos[0], target_pos[1], 1 ,1)):
+                self.hovering_coord = (xi, yi)
+                flag = True
+                break
+        else:
+            self.hovering_coord = (-1, -1)
+        
+        if EH.IsLMBReleased(event):
+            self.JustReleased()
+
+        if EH.IsRMBClicked(event):
+            self.DeleteHover()
+
 
     def JustReleased(self):
-        if self.App.held_module_idx != -1:
-            self.App.AddModule(self.App.held_module_idx, self.hovering_line_idx)
-        self.hovering_line_idx = -1
+        if self.App.held_module_key != "I" and self.hovering_coord != (-1, -1):
+            self.App.AddModule(self.hovering_coord[0], self.hovering_coord[1], self.App.held_module_key)
+        self.hovering_line_idx = "I"
+        self.hovering_coord = (-1, -1)
+
+    def DeleteHover(self):
+        if self.hovering_coord != (-1, -1):
+            self.App.RemoveModule(self.hovering_coord[0], self.hovering_coord[1])
 
     def Draw(self):
         # draw base lines
@@ -126,62 +136,68 @@ class QuantumCircuitUI(BaseUI):
         pygame.draw.line(self.Screen, COLOR.BASELINE, (self.LINEMARGINLEFT, y + 2), (CONFIG.SCREEN_WIDTH - self.LINEMARGINRIGHT, y + 2), width=self.LINEWIDTH // 2)
 
         # draw line modules
-        for yi, line_modules in enumerate(self.App.module_lines):
-            for xi, module_idx in enumerate(line_modules):
-                x = self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
-                y = self.rect.y + (yi + 0.5) * self.LINESPACE - (CONFIG.MODULE_SIZE / 2)
-                rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-                self.App.modules[module_idx].Draw(self.Screen, self.App.moduleFont, rect)
+        for (xi, yi), module_key in np.ndenumerate(self.App.module_lines):
+            if module_key == "I":
+                continue
+            x = self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+            y = self.rect.y + (yi + 0.5) * self.LINESPACE - (CONFIG.MODULE_SIZE / 2)
+            rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
+            self.App.modules[module_key].Draw(self.Screen, self.App.moduleFont, rect)
         
         # draw hovering
-        if self.hovering_line_idx != -1:
-            xi = len(self.App.module_lines[self.hovering_line_idx])
-            x = self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (self.MODULEMARGIN + CONFIG.MODULE_SIZE)
-            y = self.rect.y + self.LINESPACE * (self.hovering_line_idx + 0.5) - CONFIG.MODULE_SIZE / 2
-            rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-            pygame.draw.rect(self.Screen, COLOR.WHITE, rect)
+        if self.App.held_module_key != "I":
+            if self.hovering_coord != (-1, -1):
+                xi = self.hovering_coord[0]
+                yi = self.hovering_coord[1]
+                x = self.rect.left + self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+                y = self.rect.top + (yi + 0.5) * self.LINESPACE - CONFIG.MODULE_SIZE / 2
+                rect = Rect(x,y,CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
+                pygame.draw.rect(self.Screen, COLOR.GRAY, rect)
+
+    def GetModuleCenter(self, xi, yi):
+        x = self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (self.MODULEMARGIN + CONFIG.MODULE_SIZE)
+        y = self.rect.y + self.LINESPACE * (yi + 1) - CONFIG.MODULE_SIZE / 2
+        return (x, y)
 
 # Module Selector UI Class
 class ModuleSelectorUI(BaseUI):
     def __init__(self, app: qs.QuantumSimulatorApp, rect: Rect):
         super().__init__(app, rect)
         self.modules_per_line = self.rect.width // (CONFIG.MODULE_SIZE + 10)
-        self.module_rects: list[Rect] = []
+        self.module_rects: dict[Rect] = {}
         self.initialize_modules()
 
     def initialize_modules(self):
-        for i in range(len(self.App.modules)):
+        for i, module_key in enumerate(self.App.modules.keys()):
             xi = i % self.modules_per_line
             yi = i // self.modules_per_line
             x = 10 + xi * (10 + CONFIG.MODULE_SIZE)
             y = self.rect.top + 10 + yi * (10 + self.modules_per_line)
-            self.module_rects.append(Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE))
+            self.module_rects[module_key] = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
 
     def Draw(self):
-        for i, module in enumerate(self.App.modules):
-            rect = self.module_rects[i]
+        for i, module_key in enumerate(self.App.modules.keys()):
+            rect = self.module_rects[module_key]
+            module = self.App.modules[module_key]
             module.Draw(self.App.screen, self.App.moduleFont, rect)
 
     def Update(self, event: Event):
         if EH.IsLMBClicked(event):
-            self.HeldUpdate(event)
+            mouse_pos_rect = Rect(event.pos[0], event.pos[1], 1, 1)
+            held_key = self.get_hovering_module_key(mouse_pos_rect)
+            if held_key != "I":
+                module_rect = self.module_rects[held_key]
+                held_pos =  (mouse_pos_rect.x - module_rect.x,
+                            mouse_pos_rect.y - module_rect.y)
+                self.App.held_pos = held_pos
+            
+            self.App.held_module_key = held_key 
 
-    def HeldUpdate(self, event: Event):
-        mouse_pos_rect = Rect(event.pos[0], event.pos[1], 1, 1)
-        held_idx = self.get_hovering_module_idx(mouse_pos_rect)
-        if held_idx != -1:
-            module_rect = self.module_rects[held_idx]
-            held_pos =  (mouse_pos_rect.x - module_rect.x,
-                         mouse_pos_rect.y - module_rect.y)
-            self.App.held_pos = held_pos
-        
-        self.App.held_module_idx = held_idx 
-
-    def get_hovering_module_idx(self, mouse_pos_rect: Rect):
-        for i, rect in enumerate(self.module_rects):
+    def get_hovering_module_key(self, mouse_pos_rect: Rect):
+        for key, rect in self.module_rects.items():
             if rect.contains(mouse_pos_rect):
-                return i
-        return -1
+                return key
+        return "I"
 
 # Holding Module UI Class
 class HoldingModuleUI(BaseUI):
@@ -190,13 +206,13 @@ class HoldingModuleUI(BaseUI):
 
     def Update(self, event: Event):
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            self.App.held_module_idx = -1
+            self.App.held_module_key = "I"
     
     def Draw(self):
-        if self.App.held_module_idx != -1:
+        if self.App.held_module_key != "I":
             mx, my = pygame.mouse.get_pos()
             rect = Rect(mx - self.App.held_pos[0], my - self.App.held_pos[1], CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-            module = self.App.modules[self.App.held_module_idx]
+            module = self.App.modules[self.App.held_module_key]
             module.Draw(self.Screen, self.App.moduleFont, rect)
 
 class ProbGraphUI(BaseUI):
