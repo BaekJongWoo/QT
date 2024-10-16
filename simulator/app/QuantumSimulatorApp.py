@@ -2,6 +2,7 @@ from __future__ import annotations
 import pygame
 from pygame import Rect
 import sys
+from app.Circuit import QuantumCircuit
 from static import Gate
 from ui.Module import ControlledModule, Module
 from ui.UIElement import *
@@ -28,7 +29,7 @@ class QuantumSimulatorApp:
         self.max_module_per_line = 18
         self.qbit_num = qbit_num
         self.result: list[complex] = [0 for _ in range(2 ** qbit_num)]
-        self.module_lines = np.full((self.max_module_per_line, qbit_num), "I", dtype="U2")
+        self.main_circuit = QuantumCircuit(qbit_num, self.max_module_per_line)
 
         self.modules: dict[str, Module] = {
             "H": Module("H", COLOR.BLUSHRED),
@@ -51,25 +52,40 @@ class QuantumSimulatorApp:
         button_margin = 10
         graph_section_percentage = 0.7
 
-        self.module_selecor = ModuleSelectorUI(self, Rect(0,
+        quantum_circuit = QuantumCircuitUI(self, Rect(0,
+                                                      y_circuit, 
+                                                      CONFIG.SCREEN_WIDTH, 
+                                                      CONFIG.CIRCUITSECTIONHEIGHT))
+        self.module_selector = ModuleSelectorUI(self, Rect(0,
                                                       y_util, 
                                                       CONFIG.SCREEN_WIDTH * (1-graph_section_percentage),
                                                       CONFIG.UTILITYSECTIONHRIGHT))
 
-        self.ui_elements: list[BaseUI] = []
-        self.AddUIElement(QuantumCircuitUI(self, Rect(0,
-                                                      y_circuit, 
-                                                      CONFIG.SCREEN_WIDTH, 
-                                                      CONFIG.CIRCUITSECTIONHEIGHT)))
-        self.AddUIElement(BuildButtonUI(self, Rect(
+        add_preset_button = AddPresetButtonUI(self, Rect(
             button_margin, y_button + button_margin,
             80, CONFIG.BUTTONSECTIONHEIGHT - 2 * button_margin
-            )))
-        self.AddUIElement(EraseButtonUI(self, Rect(
+            ))
+
+        erase_button = EraseButtonUI(self, Rect(
             CONFIG.SCREEN_WIDTH - 100, y_button + button_margin, 
             80, CONFIG.BUTTONSECTIONHEIGHT - 2 * button_margin
-            )))
-        self.AddUIElement(self.module_selecor)
+            ))
+        qbit_minus_button = QbitMinusButton(self, Rect(
+            CONFIG.SCREEN_WIDTH / 2 - (button_margin + 40), y_button + button_margin,
+            40, CONFIG.BUTTONSECTIONHEIGHT - 2 * button_margin
+        ), "-")
+        qbit_plus_button = QbitPlusButton(self, Rect(
+            CONFIG.SCREEN_WIDTH / 2 + button_margin, y_button + button_margin,
+            40, CONFIG.BUTTONSECTIONHEIGHT - 2 * button_margin
+        ), "+")
+
+        self.ui_elements: list[BaseUI] = []
+        self.AddUIElement(quantum_circuit)
+        self.AddUIElement(add_preset_button)
+        self.AddUIElement(qbit_minus_button)
+        self.AddUIElement(qbit_plus_button)
+        self.AddUIElement(erase_button)
+        self.AddUIElement(self.module_selector)
         self.AddUIElement(ProbGraphUI(self, Rect(CONFIG.SCREEN_WIDTH * (1-graph_section_percentage), y_util,
                                                  CONFIG.SCREEN_WIDTH * graph_section_percentage, CONFIG.UTILITYSECTIONHRIGHT)))
         self.AddUIElement(HoldingModuleUI(self))
@@ -81,7 +97,7 @@ class QuantumSimulatorApp:
         if self.seleted_preset in self.presets:
             return self.presets[self.seleted_preset].gates
         else:
-            return self.module_lines
+            return self.main_circuit
         
     @CurrentCircuit.setter
     def CurrentCircuit(self, value):
@@ -134,7 +150,7 @@ class QuantumSimulatorApp:
 
     def AddPreset(self, name, preset_module):
         self.presets[name] = preset_module
-        self.module_selecor.UpdateModuleRects()
+        self.module_selector.UpdateModuleRects()
 
     def run(self):
         while True:

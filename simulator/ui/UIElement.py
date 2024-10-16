@@ -3,7 +3,6 @@ import pygame
 from pygame import Rect, Surface
 from pygame.event import Event
 from pygame.font import Font
-from simulator.ui.COLOR import BLUSHRED, LIGHTRED, WHITE
 from ui.Module import PresetModule
 from ui import COLOR, CONFIG
 import app.QuantumSimulatorApp as qs
@@ -82,7 +81,7 @@ class EraseButtonUI(ButtonUI):
         self.App.Clear()
         self.App.Compute()
 
-class BuildButtonUI(ButtonUI):
+class AddPresetButtonUI(ButtonUI):
     def __init__(self, app, rect):
         super().__init__(app, rect, "Add", app.baseFont, COLOR.YELLOW, COLOR.LIGHTYELLOW)
     
@@ -92,9 +91,9 @@ class BuildButtonUI(ButtonUI):
         preset_module = PresetModule(base_name, COLOR.WHITE, base_gates)
         self.App.AddPreset(base_name, preset_module)
 
-class BitMinusButton(ButtonUI):
+class QbitMinusButton(ButtonUI):
     def __init__(self, app, rect, text):
-        super().__init__(app, rect, text, app.baseFont, COLOR.GRAY, COLOR.LIGHTGRAY, COLOR.WHITE)
+        super().__init__(app, rect, text, app.baseFont, COLOR.WHITE, COLOR.LIGHTGRAY, COLOR.GRAY)
 
     def Update(self, event):
         if self.App.qbit_num > 1:
@@ -106,9 +105,9 @@ class BitMinusButton(ButtonUI):
     def Pressed(self):
         self.App.SubQbit()
 
-class BitPlusButton(ButtonUI):
+class QbitPlusButton(ButtonUI):
     def __init__(self, app, rect, text):
-        super().__init__(app, rect, text, app.baseFont, COLOR.GRAY, COLOR.LIGHTGRAY, COLOR.WHITE)
+        super().__init__(app, rect, text, app.baseFont, COLOR.WHITE, COLOR.LIGHTGRAY, COLOR.GRAY)
 
     def Pressed(self):
         self.App.AddQbit()
