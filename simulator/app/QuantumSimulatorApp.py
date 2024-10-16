@@ -37,7 +37,6 @@ class QuantumSimulatorApp:
             "S": Module("S", COLOR.YELLOW),
             "Z": Module("Z", COLOR.SHADYSKY),
             "Y": Module("Y", COLOR.SHADYSKY),
-            "R": Module("R", COLOR.YELLOW),
             "C": Module("C", COLOR.GRAY),
         }
 

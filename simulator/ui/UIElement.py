@@ -135,6 +135,10 @@ class QuantumCircuitUI(BaseUI):
             self.App.RemoveModule(self.hovering_coord[0], self.hovering_coord[1])
 
     def Draw(self):
+
+        if self.App.seleted_preset != "":
+            pygame.draw.rect(self.Screen, COLOR.WHITE, self.rect, 4)
+
         # draw base lines
         for i in range(self.App.qbit_num):
             y = self.rect.y + (i + 0.5) * self.LINESPACE
