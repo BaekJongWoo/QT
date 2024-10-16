@@ -123,6 +123,15 @@ class QuantumSimulatorApp:
             self.CurrentCircuit[idx, q_idx] = "I"
         self.Compute()
 
+    def ChangeQbitNum(self, num):
+        self.qbit_num = num
+
+    def AddQbit(self):
+        self.ChangeQbitNum(self.qbit_num + 1)
+
+    def SubQbit(self):
+        self.ChangeQbitNum(self.qbit_num - 1)
+
     def AddPreset(self, name, preset_module):
         self.presets[name] = preset_module
         self.module_selecor.UpdateModuleRects()

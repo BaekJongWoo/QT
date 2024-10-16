@@ -3,6 +3,7 @@ import pygame
 from pygame import Rect, Surface
 from pygame.event import Event
 from pygame.font import Font
+from simulator.ui.COLOR import BLUSHRED, LIGHTRED, WHITE
 from ui.Module import PresetModule
 from ui import COLOR, CONFIG
 import app.QuantumSimulatorApp as qs
@@ -28,6 +29,7 @@ class BaseUI:
 class ButtonUI(BaseUI):
     is_hovering = False
     button_pressed = False
+    enabled = True
 
     def __init__(self, app, rect, text, font: pygame.font.Font,
                  color = COLOR.BLUSHRED, hoveringColor = COLOR.LIGHTRED, pressed_color = COLOR.WHITE):
@@ -47,15 +49,22 @@ class ButtonUI(BaseUI):
                 self.is_hovering = False
                 self.button_pressed = False
 
-        if EH.IsLMBClicked(event) and self.is_hovering:
-            self.button_pressed = True
-        
-        if EH.IsLMBReleased(event):
-            self.button_pressed = False
+        if self.enabled:
+            if EH.IsLMBClicked(event) and self.is_hovering:
+                self.button_pressed = True
+                self.Pressed()
+            
+            if EH.IsLMBReleased(event):
+                self.button_pressed = False
+
+    def Pressed(self):
+        pass
 
     def Draw(self):
         color = self.color
-        if self.button_pressed:
+        if not self.enabled:
+            color = COLOR.GRAY
+        elif self.button_pressed:
             color = self.pressed_color
         elif self.is_hovering:
             color = self.hovering_color
@@ -69,23 +78,40 @@ class EraseButtonUI(ButtonUI):
     def __init__(self, app, rect):
         super().__init__(app, rect, "Erase", app.baseFont)
 
-    def Update(self, event):
-        if EH.IsLMBClicked(event) and self.is_hovering:
-            self.App.Clear()
-            self.App.Compute()
-        return super().Update(event)
+    def Pressed(self):
+        self.App.Clear()
+        self.App.Compute()
 
 class BuildButtonUI(ButtonUI):
     def __init__(self, app, rect):
         super().__init__(app, rect, "Add", app.baseFont, COLOR.YELLOW, COLOR.LIGHTYELLOW)
+    
+    def Pressed(self):
+        base_name =  "P" + str(len(self.App.presets))
+        base_gates = np.full((self.App.max_module_per_line, self.App.qbit_num), "I", dtype="U2")
+        preset_module = PresetModule(base_name, COLOR.WHITE, base_gates)
+        self.App.AddPreset(base_name, preset_module)
+
+class BitMinusButton(ButtonUI):
+    def __init__(self, app, rect, text):
+        super().__init__(app, rect, text, app.baseFont, COLOR.GRAY, COLOR.LIGHTGRAY, COLOR.WHITE)
 
     def Update(self, event):
-        if EH.IsLMBClicked(event) and self.is_hovering:
-            base_name =  "P" + str(len(self.App.presets))
-            base_gates = np.full((self.App.max_module_per_line, self.App.qbit_num), "I", dtype="U2")
-            preset_module = PresetModule(base_name, COLOR.WHITE, base_gates)
-            self.App.AddPreset(base_name, preset_module)
+        if self.App.qbit_num > 1:
+            self.enabled = True
+        else:
+            self.enabled = False
         return super().Update(event)
+
+    def Pressed(self):
+        self.App.SubQbit()
+
+class BitPlusButton(ButtonUI):
+    def __init__(self, app, rect, text):
+        super().__init__(app, rect, text, app.baseFont, COLOR.GRAY, COLOR.LIGHTGRAY, COLOR.WHITE)
+
+    def Pressed(self):
+        self.App.AddQbit()
 
 # Quantum Circuit UI Class
 class QuantumCircuitUI(BaseUI):
