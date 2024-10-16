@@ -28,3 +28,16 @@ RESULTTEXT = (200,210,220)
 BORDER = (255,255,255)
 
 TEXT = (18,22,25)
+
+
+MODULE_COLOR: dict[str, tuple] = {
+    "H": BLUSHRED,
+    "X": SHADYSKY,
+    "T": YELLOW,
+    "S": YELLOW,
+    "Z": SHADYSKY,
+    "Y": SHADYSKY,
+    "C": GRAY,
+}
+
+HOVERING_COLOR = GRAY

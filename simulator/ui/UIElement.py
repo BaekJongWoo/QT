@@ -3,114 +3,28 @@ import pygame
 from pygame import Rect, Surface
 from pygame.event import Event
 from pygame.font import Font
-from ui.Module import PresetModule
-from ui import COLOR, CONFIG
+
+from ui.BaseUI import BaseUI
+from static import COLOR, CONFIG
 import app.QuantumSimulatorApp as qs
 import static.EventHandler as EH 
 
 import numpy as np
 
-class BaseUI:
-    def __init__(self, app: qs.QuantumSimulatorApp, rect: Rect):
-        self.App = app
-        self.rect = rect
+def DrawModule(surface: Surface, key: str, topLeftPos, font: Font, size: int = 1):
+    color = COLOR.WHITE
+    if key == "":
+        color = COLOR.HOVERING_COLOR
+    if key in COLOR.MODULE_COLOR:
+        color = COLOR.MODULE_COLOR[key]
+    size = (CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE * size)
+    rect = Rect(topLeftPos, size)
+    pygame.draw.rect(surface, color, rect)
 
-    def Update(self, event: Event):
-        pass
-
-    def Draw(self):
-        pass
-
-    @property
-    def Screen(self):
-        return self.App.screen
-
-class ButtonUI(BaseUI):
-    is_hovering = False
-    button_pressed = False
-    enabled = True
-
-    def __init__(self, app, rect, text, font: pygame.font.Font,
-                 color = COLOR.BLUSHRED, hoveringColor = COLOR.LIGHTRED, pressed_color = COLOR.WHITE):
-        self.text = text
-        self.font = font
-        self.color = color
-        self.hovering_color = hoveringColor
-        self.pressed_color = pressed_color
-        super().__init__(app, rect)
-
-    def Update(self, event):
-        if event.type == pygame.MOUSEMOTION:
-            mx, my = event.pos
-            if self.rect.contains(Rect(mx, my, 1, 1)):
-                self.is_hovering = True
-            else:
-                self.is_hovering = False
-                self.button_pressed = False
-
-        if self.enabled:
-            if EH.IsLMBClicked(event) and self.is_hovering:
-                self.button_pressed = True
-                self.Pressed()
-            
-            if EH.IsLMBReleased(event):
-                self.button_pressed = False
-
-    def Pressed(self):
-        pass
-
-    def Draw(self):
-        color = self.color
-        if not self.enabled:
-            color = COLOR.GRAY
-        elif self.button_pressed:
-            color = self.pressed_color
-        elif self.is_hovering:
-            color = self.hovering_color
-        pygame.draw.rect(self.Screen, color, self.rect)
-        
-        text = self.font.render(self.text, True, COLOR.BLACK)  # Text rendering
-        text_rect = text.get_rect(center=self.rect.center)
-        self.Screen.blit(text, text_rect)
-
-class EraseButtonUI(ButtonUI):
-    def __init__(self, app, rect):
-        super().__init__(app, rect, "Erase", app.baseFont)
-
-    def Pressed(self):
-        self.App.Clear()
-        self.App.Compute()
-
-class AddPresetButtonUI(ButtonUI):
-    def __init__(self, app, rect):
-        super().__init__(app, rect, "Add", app.baseFont, COLOR.YELLOW, COLOR.LIGHTYELLOW)
-    
-    def Pressed(self):
-        base_name =  "P" + str(len(self.App.presets))
-        base_gates = np.full((self.App.max_module_per_line, self.App.qbit_num), "I", dtype="U2")
-        preset_module = PresetModule(base_name, COLOR.WHITE, base_gates)
-        self.App.AddPreset(base_name, preset_module)
-
-class QbitMinusButton(ButtonUI):
-    def __init__(self, app, rect, text):
-        super().__init__(app, rect, text, app.baseFont, COLOR.WHITE, COLOR.LIGHTGRAY, COLOR.GRAY)
-
-    def Update(self, event):
-        if self.App.qbit_num > 1:
-            self.enabled = True
-        else:
-            self.enabled = False
-        return super().Update(event)
-
-    def Pressed(self):
-        self.App.SubQbit()
-
-class QbitPlusButton(ButtonUI):
-    def __init__(self, app, rect, text):
-        super().__init__(app, rect, text, app.baseFont, COLOR.WHITE, COLOR.LIGHTGRAY, COLOR.GRAY)
-
-    def Pressed(self):
-        self.App.AddQbit()
+    if key != "":
+        text = font.render(key, True, COLOR.BLACK)  # Text rendering
+        text_rect = text.get_rect(center=rect.center)
+        surface.blit(text, text_rect)
 
 # Quantum Circuit UI Class
 class QuantumCircuitUI(BaseUI):
@@ -150,9 +64,9 @@ class QuantumCircuitUI(BaseUI):
 
 
     def JustReleased(self):
-        if self.App.held_module_key != "I" and self.hovering_coord != (-1, -1):
+        if self.App.held_module_key != "" and self.hovering_coord != (-1, -1):
             self.App.AddModule(self.hovering_coord[0], self.hovering_coord[1], self.App.held_module_key)
-        self.hovering_line_idx = "I"
+        self.hovering_line_idx = ""
         self.hovering_coord = (-1, -1)
 
     def DeleteHover(self):
@@ -161,11 +75,11 @@ class QuantumCircuitUI(BaseUI):
 
     def Draw(self):
 
-        if self.App.seleted_preset != "":
+        if self.App.seleted_pack_key != "":
             pygame.draw.rect(self.Screen, COLOR.WHITE, self.rect, 4)
 
         # draw base lines
-        for i in range(self.App.qbit_num):
+        for i in range(self.CM.GetQbitNum()):
             y = self.rect.y + (i + 0.5) * self.LINESPACE
             text = self.App.baseFont.render(f"q[{i}]", True, COLOR.BASETEXT)  # Text rendering
             text_rect = text.get_rect(center=(25, y))
@@ -207,7 +121,7 @@ class QuantumCircuitUI(BaseUI):
                     self.App.presets[module_key].Draw(self.Screen, self.App.baseFont, rect)
 
         # draw hovering
-        if self.App.held_module_key != "I":
+        if self.App.held_module_key != "":
             if self.hovering_coord != (-1, -1):
                 xi = self.hovering_coord[0]
                 yi = self.hovering_coord[1]
@@ -228,73 +142,54 @@ class QuantumCircuitUI(BaseUI):
 
 # Module Selector UI Class
 class ModuleSelectorUI(BaseUI):
+    margin = 10
+
     def __init__(self, app: qs.QuantumSimulatorApp, rect: Rect):
         super().__init__(app, rect)
         self.modules_per_line = self.rect.width // (CONFIG.MODULE_SIZE + 10)
-        self.module_rects: dict[Rect] = {}
-        self.UpdateModuleRects()
+        self.keyRectDict = {}
 
-    def UpdateModuleRects(self):
-        i = 0
-        for module_key in self.App.modules.keys():
+    def GetKeyRectDict(self) -> dict[str, Rect]:
+        if list(self.keyRectDict.keys()) != self.CM.GetSelectableKeys():
+            self.UpdateKeyRectDict()
+        return self.keyRectDict
+
+    def UpdateKeyRectDict(self):
+        ret:dict[str, Rect] = {}
+        for i, key in enumerate(self.CM.GetSelectableKeys()):
             xi = i % self.modules_per_line
             yi = i // self.modules_per_line
-            x = 10 + xi * (10 + CONFIG.MODULE_SIZE)
-            y = self.rect.top + 10 + yi * (10 + CONFIG.MODULE_SIZE)
-            self.module_rects[module_key] = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-            i+=1
-        for module_key in self.App.presets.keys():
-            xi = i % self.modules_per_line
-            yi = i // self.modules_per_line
-            x = 10 + xi * (10 + CONFIG.MODULE_SIZE)
-            y = self.rect.top + 10 + yi * (10 + CONFIG.MODULE_SIZE)
-            self.module_rects[module_key] = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-            i+=1
+            x = self.rect.left + self.margin + xi * (self.margin + CONFIG.MODULE_SIZE)
+            y = self.rect.top + self.margin + yi * (self.margin + CONFIG.MODULE_SIZE)
+            rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
+            ret[key] = rect
+        self.keyRectDict = ret
 
     def Draw(self):
-        for module_key in self.App.modules.keys():
-            rect = self.module_rects[module_key]
-            module = self.App.modules[module_key]
-            module.Draw(self.App.screen, self.App.moduleFont, rect)
+        for key, rect in self.GetKeyRectDict().items():
+            DrawModule(self.Screen, key, rect.topleft, self.App.moduleFont, size=1)
 
-        for preset_key in self.App.presets.keys():
-            rect = self.module_rects[preset_key]
-            preset = self.App.presets[preset_key]
-            preset.Draw(self.App.screen, self.App.moduleFont, rect)
-            if self.App.seleted_preset == preset_key:
-                pygame.draw.rect(self.Screen, COLOR.BLACK, rect, width=3)
-
+    def GetMouseHoveringModuleKey(self, mx, my) -> str:
+        for key, rect in self.GetKeyRectDict().items():
+            if rect.contains(Rect(mx, my, 1, 1)):
+                return key
+        return ""
 
     def Update(self, event: Event):
         if EH.IsLMBClicked(event):
-            mouse_pos_rect = Rect(event.pos[0], event.pos[1], 1, 1)
-            held_key = self.get_hovering_module_key(mouse_pos_rect)
-            if held_key != "I":
-                if self.App.seleted_preset != "" and held_key in self.App.presets:
-                    pass
-                else:
-                    module_rect = self.module_rects[held_key]
-                    held_pos =  (mouse_pos_rect.x - module_rect.x,
-                                mouse_pos_rect.y - module_rect.y)
-                    self.App.held_pos = held_pos
-                    self.App.held_module_key = held_key
+            hovering_key = self.GetMouseHoveringModuleKey(event.pos[0], event.pos[1])
+            if hovering_key != "":
+                module_rect = self.GetKeyRectDict()[hovering_key]
+                self.App.held_pos = (event.pos[0] - module_rect.x, event.pos[1] - module_rect.y)
+                self.App.held_module_key = hovering_key
         
         if EH.IsRMBClicked(event):
-            mouse_pos_rect = Rect(event.pos[0], event.pos[1], 1, 1)
-            key = self.get_hovering_module_key(mouse_pos_rect)
-            if key in self.App.presets:
-                if self.App.seleted_preset == key:
-                    self.App.seleted_preset = ""
+            hovering_key = self.GetMouseHoveringModuleKey(event.pos[0], event.pos[1])
+            if self.CM.IsPackedGate(hovering_key):
+                if self.App.seleted_pack_key == hovering_key:
+                    self.App.seleted_pack_key == ""
                 else:
-                    self.App.seleted_preset = key
-            elif self.rect.contains(mouse_pos_rect):
-                self.App.seleted_preset = ""
-
-    def get_hovering_module_key(self, mouse_pos_rect: Rect):
-        for key, rect in self.module_rects.items():
-            if rect.contains(mouse_pos_rect):
-                return key
-        return "I"
+                    self.App.seleted_pack_key = hovering_key
 
 # Holding Module UI Class
 class HoldingModuleUI(BaseUI):
@@ -303,17 +198,17 @@ class HoldingModuleUI(BaseUI):
 
     def Update(self, event: Event):
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            self.App.held_module_key = "I"
+            self.App.held_module_key = ""
     
     def Draw(self):
-        if self.App.held_module_key != "I":
+        if self.App.held_module_key != "":
             mx, my = pygame.mouse.get_pos()
-            rect = Rect(mx - self.App.held_pos[0], my - self.App.held_pos[1], CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-            if self.App.held_module_key in self.App.modules:
-                module = self.App.modules[self.App.held_module_key]
-            else:
-                module = self.App.presets[self.App.held_module_key]
-            module.Draw(self.Screen, self.App.moduleFont, rect)
+            x = mx - self.App.held_pos[0]
+            y = my - self.App.held_pos[1]
+            size = 1
+            if self.CM.IsPackedGate(self.App.held_module_key):
+                size = self.CM
+            DrawModule(self.Screen, self.App.held_module_key, (x,y), self.App.moduleFont, size)
 
 class ProbGraphUI(BaseUI):
     baseline_margin = 30
@@ -341,12 +236,8 @@ class ProbGraphUI(BaseUI):
             text_rect = text.get_rect(center=(x, self.rect.bottom - self.baseline_margin / 2))
             self.Screen.blit(text, text_rect)
             
-            graph_height = graph_max_height * prob.real
+            graph_height = graph_max_height * prob.real[0]
             graph_top = self.rect.top + graph_max_height - graph_height
             graph_left = x - self.graph_width / 2
 
-            pygame.draw.rect(self.Screen, COLOR.GRAPHBLUE, Rect(float(graph_left), float(graph_top),
-                                                           float(self.graph_width), float(graph_height)))
-            
-
-            
+            pygame.draw.rect(self.Screen, COLOR.GRAPHBLUE, Rect(graph_left, graph_top, self.graph_width, graph_height))

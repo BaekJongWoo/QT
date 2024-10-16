@@ -2,21 +2,22 @@ from __future__ import annotations
 import pygame
 from pygame import Rect
 import sys
-from app.Circuit import QuantumCircuit
-from static import Gate
-from ui.Module import ControlledModule, Module
+
+from static import COLOR, CONFIG
+
+from app.CircuitManager import * 
 from ui.UIElement import *
-import ui.COLOR as COLOR
-import ui.CONFIG as CONFIG
+from ui.ButtonUI import *
+from ui.BaseUI import BaseUI
 
 import numpy as np
 
 class QuantumSimulatorApp:
     
-    held_module_key = "I"
+    held_module_key = ""
     held_pos = (0,0)
 
-    seleted_preset = ""
+    seleted_pack_key = ""
 
     def __init__(self, qbit_num):
         self.screen = pygame.display.set_mode((CONFIG.SCREEN_WIDTH, CONFIG.SCREEN_HEIGHT))
@@ -29,22 +30,8 @@ class QuantumSimulatorApp:
         self.max_module_per_line = 18
         self.qbit_num = qbit_num
         self.result: list[complex] = [0 for _ in range(2 ** qbit_num)]
-        self.main_circuit = QuantumCircuit(qbit_num, self.max_module_per_line)
 
-        self.modules: dict[str, Module] = {
-            "H": Module("H", COLOR.BLUSHRED),
-            "X": Module("X", COLOR.SHADYSKY),
-            "T": Module("T", COLOR.YELLOW),
-            "S": Module("S", COLOR.YELLOW),
-            "Z": Module("Z", COLOR.SHADYSKY),
-            "Y": Module("Y", COLOR.SHADYSKY),
-            "C": Module("C", COLOR.GRAY),
-        }
-
-        self.presets: dict[str, PresetModule] = {
-            
-        }
-
+        self.cm = CircuitManager()
         y_circuit = 0
         y_button = CONFIG.CIRCUITSECTIONHEIGHT
         y_util = CONFIG.BUTTONSECTIONHEIGHT + CONFIG.CIRCUITSECTIONHEIGHT
@@ -78,52 +65,36 @@ class QuantumSimulatorApp:
             CONFIG.SCREEN_WIDTH / 2 + button_margin, y_button + button_margin,
             40, CONFIG.BUTTONSECTIONHEIGHT - 2 * button_margin
         ), "+")
+        prob_graph = ProbGraphUI(self, Rect(CONFIG.SCREEN_WIDTH * (1-graph_section_percentage), y_util,
+                                                 CONFIG.SCREEN_WIDTH * graph_section_percentage, CONFIG.UTILITYSECTIONHRIGHT))
 
-        self.ui_elements: list[BaseUI] = []
-        self.AddUIElement(quantum_circuit)
-        self.AddUIElement(add_preset_button)
-        self.AddUIElement(qbit_minus_button)
-        self.AddUIElement(qbit_plus_button)
-        self.AddUIElement(erase_button)
-        self.AddUIElement(self.module_selector)
-        self.AddUIElement(ProbGraphUI(self, Rect(CONFIG.SCREEN_WIDTH * (1-graph_section_percentage), y_util,
-                                                 CONFIG.SCREEN_WIDTH * graph_section_percentage, CONFIG.UTILITYSECTIONHRIGHT)))
-        self.AddUIElement(HoldingModuleUI(self))
+        holding_module = HoldingModuleUI(self)
 
+        self.ui_elements: list[BaseUI] = [
+            quantum_circuit,
+            add_preset_button,
+            qbit_minus_button,
+            qbit_plus_button,
+            erase_button,
+            self.module_selector,
+            prob_graph,
+            holding_module
+        ]
         self.Compute()
 
     @property
     def CurrentCircuit(self):
-        if self.seleted_preset in self.presets:
-            return self.presets[self.seleted_preset].gates
+        if self.seleted_pack_key == "":
+            return self.cm.circuit
         else:
-            return self.main_circuit
-        
-    @CurrentCircuit.setter
-    def CurrentCircuit(self, value):
-        if self.seleted_preset in self.presets:
-            self.presets[self.seleted_preset].gates = value
-        else:
-            self.module_lines = value
-
-    def Clear(self):
-        self.CurrentCircuit = np.full((self.max_module_per_line, self.qbit_num), "I", dtype="U2")
-
-    def AddUIElement(self, newUIElement: BaseUI):
-        self.ui_elements.append(newUIElement)
+            return self.cm.packed_gate[self.seleted_pack_key]
 
     def Compute(self):
-        q_value = np.zeros((2**self.qbit_num, 1), dtype=complex)
+        q_value = np.zeros((2**self.cm.QbitNum, 1), dtype=complex)
         q_value[0] = 1
-        for line in self.module_lines:
-            if line[0] in self.presets:
-                for preset_line in self.presets[line[0]].gates:
-                    gate = Gate.Generate(preset_line)
-                    q_value = np.dot(gate, q_value)
-            else:
-                gate = Gate.Generate(line)
-                q_value = np.dot(gate, q_value)
-        self.result = q_value
+        gate = self.cm.Generate()
+        self.result = gate * q_value
+        print(f"=== Result === \n{self.result}")
 
     def AddModule(self, idx, q_idx, module_key):
         if module_key in self.presets:
@@ -139,18 +110,6 @@ class QuantumSimulatorApp:
             self.CurrentCircuit[idx, q_idx] = "I"
         self.Compute()
 
-    def ChangeQbitNum(self, num):
-        self.qbit_num = num
-
-    def AddQbit(self):
-        self.ChangeQbitNum(self.qbit_num + 1)
-
-    def SubQbit(self):
-        self.ChangeQbitNum(self.qbit_num - 1)
-
-    def AddPreset(self, name, preset_module):
-        self.presets[name] = preset_module
-        self.module_selector.UpdateModuleRects()
 
     def run(self):
         while True:
