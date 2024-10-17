@@ -69,7 +69,7 @@ class AddPresetButtonUI(ButtonUI):
         super().__init__(app, rect, "Add", app.baseFont, COLOR.YELLOW, COLOR.LIGHTYELLOW)
     
     def Pressed(self):
-        pass
+        self.CM.AddNewPack()
 
 class QbitMinusButton(ButtonUI):
     def __init__(self, app, rect, text):
@@ -81,6 +81,7 @@ class QbitMinusButton(ButtonUI):
 
     def Pressed(self):
         self.CM.SubQbit(self.App.seleted_pack_key)
+        self.App.Compute()
 
 class QbitPlusButton(ButtonUI):
     def __init__(self, app, rect, text):
@@ -88,3 +89,4 @@ class QbitPlusButton(ButtonUI):
 
     def Pressed(self):
         self.CM.AddQbit(self.App.seleted_pack_key)
+        self.App.Compute()

@@ -35,7 +35,11 @@ def find_power_of_two(n):
 class CircuitManager:
     def __init__(self, preset: dict[str, np.ndarray] = {}) -> None:
         self.packed_gate = preset
-        self.circuit = np.array([["I"]])
+        self.circuit = np.array([["I"]], dtype="U2")
+
+    def AddNewPack(self):
+        new_pack_key = f"P{len(self.packed_gate)}"
+        self.packed_gate[new_pack_key] = np.array([["I"]], dtype="U2")
 
     def GetLen(self, pack_key = "") -> int:
         if pack_key == "":
@@ -53,9 +57,6 @@ class CircuitManager:
         else:
             raise KeyError(pack_key)
 
-    def GetSelectableKeys(self) -> list[str]:
-        return list(GATES.keys()) + list(self.packed_gate.keys())
-
     def IsBaseGate(self, key: str) -> bool:
         return key in GATES
 
@@ -63,16 +64,16 @@ class CircuitManager:
         return key in self.packed_gate
 
     def IsValidGateKey(self, key:str) -> bool:
-        if self.IsBaseGate(key) or self.IsPackedGate(key):
+        if self.IsBaseGate(key) or self.IsPackedGate(key) or key == 'C':
             return True
         else:
             return False
 
     def IsSubQbitValid(self, pack_key = ""):
         if pack_key == "":
-            return len(self.circuit[0]) > 1 and np.all(self.circuit[:,:-1] == "I")
+            return len(self.circuit[0]) > 1 and np.all(self.circuit[:,-1] == "I")
         elif self.IsPackedGate(pack_key):
-            return len(self.packed_gate[pack_key][0]) > 1 and np.all(self.packed_gate[pack_key][:,:-1] == "I")
+            return len(self.packed_gate[pack_key][0]) > 1 and np.all(self.packed_gate[pack_key][:,-1] == "I")
         else:
             raise KeyError(pack_key)
 
@@ -94,10 +95,13 @@ class CircuitManager:
         else:
             raise KeyError(pack_key)
 
-    def Generate(self):
+    def Generate(self, pack_key = ""):
         ret = 1
-        for line in self.circuit:
-            base = np.eye(2**len(line))
+        circuit = self.circuit
+        if self.IsPackedGate(pack_key):
+            circuit = self.packed_gate[pack_key]
+        for line in circuit:
+            base = np.eye(2**len(line), dtype=complex)
 
             mask = 1
             gate = 1
@@ -110,15 +114,25 @@ class CircuitManager:
                     gate = np.kron(ONE, gate)
                 elif self.IsPackedGate(key):
                     mask = np.kron(I,mask)
-                    sub_gate = self.Generate(self.packed_gate[key])
+                    sub_gate = self.Generate(key)
                     gate = np.kron(sub_gate, gate)
                 elif key.isdigit():
                     mask = np.kron(I,mask)
                 else:
                     mask = np.kron(I, mask)
                     gate = np.kron(GATES[key], gate)
-            ret *= (base - mask + gate)
+            ret = np.dot((base - mask + gate), ret)
         return ret
+
+if __name__ == "__main__":
+    cm = CircuitManager()
+    c = [
+        ["H"],
+        ["I"]
+    ]
+    cm.circuit = np.array(c)
+    gate = cm.Generate()
+    print(gate)
 
 # class Swap(Gate):
 #     def __init__(self, i, j) -> None:

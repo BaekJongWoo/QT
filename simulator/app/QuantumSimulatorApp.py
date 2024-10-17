@@ -15,11 +15,9 @@ import numpy as np
 class QuantumSimulatorApp:
     
     held_module_key = ""
-    held_pos = (0,0)
-
     seleted_pack_key = ""
 
-    def __init__(self, qbit_num):
+    def __init__(self):
         self.screen = pygame.display.set_mode((CONFIG.SCREEN_WIDTH, CONFIG.SCREEN_HEIGHT))
         pygame.display.set_caption("Quantum Circuit Simulator")
 
@@ -28,8 +26,7 @@ class QuantumSimulatorApp:
         self.moduleFont = pygame.font.Font(None, 24)
 
         self.max_module_per_line = 18
-        self.qbit_num = qbit_num
-        self.result: list[complex] = [0 for _ in range(2 ** qbit_num)]
+        self.result: list[complex] = [0,0]
 
         self.cm = CircuitManager()
         y_circuit = 0
@@ -96,11 +93,16 @@ class QuantumSimulatorApp:
         else:
             self.cm.packed_gate[self.seleted_pack_key] = value
 
+    def Clear(self):
+        self.CurrentCircuit = np.full((1, self.cm.GetQbitNum(self.seleted_pack_key)), "I", dtype="U2")
+
     def Compute(self):
+        print(f"=== Circuit {self.seleted_pack_key}===\n{self.CurrentCircuit}")
+
         q_value = np.zeros((2**self.cm.GetQbitNum(), 1), dtype=complex)
         q_value[0] = 1
         gate = self.cm.Generate()
-        self.result = gate * q_value
+        self.result = np.dot(gate, q_value)
         print(f"=== Result === \n{self.result}")
 
     def AddModule(self, line_idx, q_idx, key):
@@ -129,9 +131,11 @@ class QuantumSimulatorApp:
             self.CurrentCircuit = np.insert(self.CurrentCircuit, line_idx, new_line, axis=0)
 
         # 모듈 삽입
-        self.CurrentCircuit[line_idx, q_idx] = key
-        for i in range(1, size):
+        for i in range(size):
             self.CurrentCircuit[line_idx, q_idx + i] = str(i)
+        self.CurrentCircuit[line_idx, q_idx] = key
+
+        self.Compute()
 
     def RemoveModule(self, line_idx, q_idx):
         if line_idx >= self.cm.GetLen(self.seleted_pack_key):
@@ -141,7 +145,9 @@ class QuantumSimulatorApp:
 
         # 모듈 제거
         key = self.CurrentCircuit[line_idx, q_idx]
+        pos_value = 0
         if key.isdigit():
+            pos_value = int(key)
             key = self.CurrentCircuit[line_idx, q_idx - int(key)]
         
         if key == "I":
@@ -151,13 +157,15 @@ class QuantumSimulatorApp:
             if self.cm.IsPackedGate(key):
                 size = self.cm.GetQbitNum(key)
             for i in range(size):
-                self.CurrentCircuit[line_idx, q_idx + i] = "I"
+                self.CurrentCircuit[line_idx, q_idx - pos_value + i] = "I"
         else:
             raise KeyError(key)
         
         # 라인이 빈 경우 라인 제거
         if np.all(self.CurrentCircuit[line_idx] == "I"):
             self.CurrentCircuit = np.delete(self.CurrentCircuit, line_idx, axis=0)
+
+        self.Compute()
 
     def run(self):
         while True:
