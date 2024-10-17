@@ -89,19 +89,75 @@ class QuantumSimulatorApp:
         else:
             return self.cm.packed_gate[self.seleted_pack_key]
 
+    @CurrentCircuit.setter
+    def CurrentCircuit(self, value):
+        if self.seleted_pack_key == "":
+            self.cm.circuit = value
+        else:
+            self.cm.packed_gate[self.seleted_pack_key] = value
+
     def Compute(self):
-        q_value = np.zeros((2**self.cm.QbitNum, 1), dtype=complex)
+        q_value = np.zeros((2**self.cm.GetQbitNum(), 1), dtype=complex)
         q_value[0] = 1
         gate = self.cm.Generate()
         self.result = gate * q_value
         print(f"=== Result === \n{self.result}")
 
-
     def AddModule(self, line_idx, q_idx, key):
-        
+        if line_idx >= self.cm.GetLen(self.seleted_pack_key):
+            raise IndexError(line_idx)
+        if q_idx >= self.cm.GetQbitNum(self.seleted_pack_key):
+            raise IndexError(q_idx)
+        if not self.cm.IsValidGateKey(key):
+            raise KeyError(key)
+
+        size = 1
+        if self.cm.IsPackedGate(key):
+            size = self.cm.GetQbitNum(key)
+
+        # 새 행이 필요한 경우 생성
+        NeedNewLine = False
+        if line_idx == self.cm.GetLen(self.seleted_pack_key) - 1:
+            NeedNewLine = True
+        else:
+            for i in range(size):
+                if self.CurrentCircuit[line_idx, q_idx + i] != "I":
+                    NeedNewLine = True
+                    break
+        if NeedNewLine:
+            new_line = np.full((1, self.cm.GetQbitNum(self.seleted_pack_key)), "I", dtype="U2")
+            self.CurrentCircuit = np.insert(self.CurrentCircuit, line_idx, new_line, axis=0)
+
+        # 모듈 삽입
+        self.CurrentCircuit[line_idx, q_idx] = key
+        for i in range(1, size):
+            self.CurrentCircuit[line_idx, q_idx + i] = str(i)
 
     def RemoveModule(self, line_idx, q_idx):
+        if line_idx >= self.cm.GetLen(self.seleted_pack_key):
+            raise IndexError(line_idx)
+        if q_idx >= self.cm.GetQbitNum(self.seleted_pack_key):
+            raise IndexError(q_idx)
 
+        # 모듈 제거
+        key = self.CurrentCircuit[line_idx, q_idx]
+        if key.isdigit():
+            key = self.CurrentCircuit[line_idx, q_idx - int(key)]
+        
+        if key == "I":
+            return
+        elif self.cm.IsValidGateKey(key):
+            size = 1
+            if self.cm.IsPackedGate(key):
+                size = self.cm.GetQbitNum(key)
+            for i in range(size):
+                self.CurrentCircuit[line_idx, q_idx + i] = "I"
+        else:
+            raise KeyError(key)
+        
+        # 라인이 빈 경우 라인 제거
+        if np.all(self.CurrentCircuit[line_idx] == "I"):
+            self.CurrentCircuit = np.delete(self.CurrentCircuit, line_idx, axis=0)
 
     def run(self):
         while True:

@@ -31,6 +31,7 @@ class QuantumCircuitUI(BaseUI):
     LINEWIDTH = 2
     LINESPACE = 40
 
+    LINEMARGINTOP = 10
     LINEMARGINLEFT = 50
     LINEMARGINRIGHT = 30
 
@@ -64,7 +65,6 @@ class QuantumCircuitUI(BaseUI):
         if EH.IsRMBClicked(event):
             self.DeleteHover()
 
-
     def JustReleased(self):
         if self.App.held_module_key != "" and self.hovering_coord != (-1, -1):
             self.App.AddModule(self.hovering_coord[0], self.hovering_coord[1], self.App.held_module_key)
@@ -74,6 +74,28 @@ class QuantumCircuitUI(BaseUI):
     def DeleteHover(self):
         if self.hovering_coord != (-1, -1):
             self.App.RemoveModule(self.hovering_coord[0], self.hovering_coord[1])
+
+    def GetLineHeight(self, yi):
+        return self.rect.top + self.LINEMARGINTOP + yi * self.LINESPACE
+
+    def GetCoordCenter(self, xi, yi):
+        x = self.rect.left + self.LINEMARGINLEFT + (xi + 0.5) * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+        y = self.GetLineHeight(yi)
+        return (x,y)
+
+    def GetCollisionRect(self, xi, yi) -> Rect:
+        x = self.rect.left + self.LINEMARGINLEFT + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+        y = self.rect.top + yi * self.LINESPACE
+        return Rect(x, y, CONFIG.MODULE_SIZE + self.MODULEMARGIN, self.LINESPACE)
+
+    def GetHoverTargetCoord(self, x, y):
+        target_rect = Rect(x,y,1,1)
+        for xi, line in enumerate(self.App.CurrentCircuit):
+            for yi, key in line:
+                rect = self.GetCollisionRect(xi, yi)
+                if rect.contains(target_rect):
+                    return (xi, yi)
+        return None
 
     def Draw(self):
 
@@ -107,31 +129,23 @@ class QuantumCircuitUI(BaseUI):
                 if key == "I" or key.isdigit():
                     continue
 
-                x = self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
-                y = self.rect.y + (yi + 0.5) * self.LINESPACE - (CONFIG.MODULE_SIZE / 2)
+                x = self.rect.left + self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+                y = self.rect.top + (yi + 0.5) * self.LINESPACE - (CONFIG.MODULE_SIZE / 2)
                 size = 1
                 if self.CM.IsPackedGate(key):
                     size = self.CM.GetQbitNum(key)
                 rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE + self.LINESPACE * (size - 1))
-                self.App.modules[key].Draw(self.Screen, self.App.moduleFont, rect)
+
+                DrawModule(self.Screen, key, (x,y), self.App.moduleFont, size)
 
                 if "C" in line:
                     pygame.draw.rect(self.Screen, COLOR.GRAY, rect, 3)
 
         # draw hovering
-        # if self.App.held_module_key != "":
-        #     if self.hovering_coord != (-1, -1):
-        #         xi = self.hovering_coord[0]
-        #         yi = self.hovering_coord[1]
-        #         x = self.rect.left + self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
-        #         if self.App.held_module_key in self.App.modules:
-        #             y = self.rect.top + (yi + 0.5) * self.LINESPACE - CONFIG.MODULE_SIZE / 2
-        #             rect = Rect(x,y,CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-        #         else:
-        #             y = self.rect.top + (0.5) * self.LINESPACE - CONFIG.MODULE_SIZE / 2
-        #             height = self.App.qbit_num * (CONFIG.MODULE_SIZE + self.MODULEMARGIN) - self.MODULEMARGIN
-        #             rect = Rect(x,y,CONFIG.MODULE_SIZE, height)
-        #         pygame.draw.rect(self.Screen, COLOR.GRAY, rect)
+        for xi, line in enumerate(self.App.CurrentCircuit):
+            for yi, key in enumerate(line):
+                collision_rect = self.GetCollisionRect(xi, yi)
+                pygame.draw.rect(self.Screen, COLOR.WHITE, collision_rect, 3)
 
     def GetModuleCenter(self, xi, yi):
         x = self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (self.MODULEMARGIN + CONFIG.MODULE_SIZE)

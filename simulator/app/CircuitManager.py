@@ -37,11 +37,6 @@ class CircuitManager:
         self.packed_gate = preset
         self.circuit = np.array([["I"]])
 
-    @property
-    def QbitNum(self):
-        len = self.circuit.shape[1]
-        return find_power_of_two(len)
-
     def GetLen(self, pack_key = "") -> int:
         if pack_key == "":
             return len(self.circuit)
@@ -66,6 +61,12 @@ class CircuitManager:
 
     def IsPackedGate(self, key:str) -> bool:
         return key in self.packed_gate
+
+    def IsValidGateKey(self, key:str) -> bool:
+        if self.IsBaseGate(key) or self.IsPackedGate(key):
+            return True
+        else:
+            return False
 
     def IsSubQbitValid(self, pack_key = ""):
         if pack_key == "":
