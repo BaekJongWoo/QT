@@ -96,19 +96,11 @@ class QuantumSimulatorApp:
         self.result = gate * q_value
         print(f"=== Result === \n{self.result}")
 
-    def AddModule(self, idx, q_idx, module_key):
-        if module_key in self.presets:
-            self.CurrentCircuit[idx] = np.full((self.qbit_num), module_key, dtype="U2")
-        else:
-            self.CurrentCircuit[idx, q_idx] = module_key
-        self.Compute()
 
-    def RemoveModule(self, idx, q_idx):
-        if self.CurrentCircuit[idx, q_idx] in self.presets:
-            self.CurrentCircuit[idx] = np.full((self.qbit_num), "I", dtype="U2")
-        else:
-            self.CurrentCircuit[idx, q_idx] = "I"
-        self.Compute()
+    def AddModule(self, line_idx, q_idx, key):
+        
+
+    def RemoveModule(self, line_idx, q_idx):
 
 
     def run(self):

@@ -46,15 +46,17 @@ class QuantumCircuitUI(BaseUI):
         mouse_pos = pygame.mouse.get_pos()
         target_pos = (mouse_pos[0] - self.App.held_pos[0] + CONFIG.MODULE_SIZE / 2, mouse_pos[1] - self.App.held_pos[1] + CONFIG.MODULE_SIZE / 2)
 
-        for (xi,yi), value in np.ndenumerate(self.App.CurrentCircuit):
-            x = self.rect.left + self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
-            y = self.rect.top + (yi + 0.5) * self.LINESPACE - self.LINESPACE / 2
-            rect = Rect(x, y, CONFIG.MODULE_SIZE + self.MODULEMARGIN, self.LINESPACE)
-            if rect.contains(Rect(target_pos[0], target_pos[1], 1 ,1)):
-                self.hovering_coord = (xi, yi)
-                break
-        else:
-            self.hovering_coord = (-1, -1)
+        self.hovering_coord = (-1, -1)
+        for (xi,yi), key in np.ndenumerate(self.App.CurrentCircuit):
+            if key.isdigit():
+                continue
+            else:
+                x = self.rect.left + self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+                y = self.rect.top + yi * self.LINESPACE
+                rect = Rect(x, y, CONFIG.MODULE_SIZE + self.MODULEMARGIN, self.LINESPACE)
+                if rect.contains(Rect(target_pos[0], target_pos[1], 1 ,1)):
+                    self.hovering_coord = (xi, yi)
+                    break
         
         if EH.IsLMBReleased(event):
             self.JustReleased()
@@ -101,39 +103,35 @@ class QuantumCircuitUI(BaseUI):
 
         # draw line modules
         for xi, line in enumerate(self.App.CurrentCircuit):
-            for yi, module_key in enumerate(line):
-                if module_key == "I":
+            for yi, key in enumerate(line):
+                if key == "I" or key.isdigit():
                     continue
-                if module_key in self.App.modules:
-                    x = self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
-                    y = self.rect.y + (yi + 0.5) * self.LINESPACE - (CONFIG.MODULE_SIZE / 2)
-                    rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-                    self.App.modules[module_key].Draw(self.Screen, self.App.moduleFont, rect)
 
-                    if "C" in line:
-                        pygame.draw.rect(self.Screen, COLOR.GRAY, rect, 3)
+                x = self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+                y = self.rect.y + (yi + 0.5) * self.LINESPACE - (CONFIG.MODULE_SIZE / 2)
+                size = 1
+                if self.CM.IsPackedGate(key):
+                    size = self.CM.GetQbitNum(key)
+                rect = Rect(x, y, CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE + self.LINESPACE * (size - 1))
+                self.App.modules[key].Draw(self.Screen, self.App.moduleFont, rect)
 
-                elif yi == 0:
-                    x = self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
-                    y = self.rect.top + (0.5) * self.LINESPACE - CONFIG.MODULE_SIZE / 2
-                    height = self.App.qbit_num * (CONFIG.MODULE_SIZE + self.MODULEMARGIN) - self.MODULEMARGIN
-                    rect = Rect(x,y,CONFIG.MODULE_SIZE, height)
-                    self.App.presets[module_key].Draw(self.Screen, self.App.baseFont, rect)
+                if "C" in line:
+                    pygame.draw.rect(self.Screen, COLOR.GRAY, rect, 3)
 
         # draw hovering
-        if self.App.held_module_key != "":
-            if self.hovering_coord != (-1, -1):
-                xi = self.hovering_coord[0]
-                yi = self.hovering_coord[1]
-                x = self.rect.left + self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
-                if self.App.held_module_key in self.App.modules:
-                    y = self.rect.top + (yi + 0.5) * self.LINESPACE - CONFIG.MODULE_SIZE / 2
-                    rect = Rect(x,y,CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
-                else:
-                    y = self.rect.top + (0.5) * self.LINESPACE - CONFIG.MODULE_SIZE / 2
-                    height = self.App.qbit_num * (CONFIG.MODULE_SIZE + self.MODULEMARGIN) - self.MODULEMARGIN
-                    rect = Rect(x,y,CONFIG.MODULE_SIZE, height)
-                pygame.draw.rect(self.Screen, COLOR.GRAY, rect)
+        # if self.App.held_module_key != "":
+        #     if self.hovering_coord != (-1, -1):
+        #         xi = self.hovering_coord[0]
+        #         yi = self.hovering_coord[1]
+        #         x = self.rect.left + self.LINEMARGINLEFT + self.MODULEMARGIN / 2 + xi * (CONFIG.MODULE_SIZE + self.MODULEMARGIN)
+        #         if self.App.held_module_key in self.App.modules:
+        #             y = self.rect.top + (yi + 0.5) * self.LINESPACE - CONFIG.MODULE_SIZE / 2
+        #             rect = Rect(x,y,CONFIG.MODULE_SIZE, CONFIG.MODULE_SIZE)
+        #         else:
+        #             y = self.rect.top + (0.5) * self.LINESPACE - CONFIG.MODULE_SIZE / 2
+        #             height = self.App.qbit_num * (CONFIG.MODULE_SIZE + self.MODULEMARGIN) - self.MODULEMARGIN
+        #             rect = Rect(x,y,CONFIG.MODULE_SIZE, height)
+        #         pygame.draw.rect(self.Screen, COLOR.GRAY, rect)
 
     def GetModuleCenter(self, xi, yi):
         x = self.LINEMARGINLEFT + self.MODULEMARGIN + xi * (self.MODULEMARGIN + CONFIG.MODULE_SIZE)
