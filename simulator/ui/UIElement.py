@@ -96,7 +96,7 @@ class QuantumCircuitUI(BaseUI):
             pygame.draw.rect(self.Screen, COLOR.WHITE, self.rect, 4)
 
         # draw base lines
-        for yi in range(self.CM.GetQbitNum()):
+        for yi in range(self.CM.GetQbitNum(self.App.seleted_pack_key)):
             y = self.GetLineHeight(yi)
             text = self.App.baseFont.render(f"q[{yi}]", True, COLOR.BASETEXT)  # Text rendering
             text_rect = text.get_rect(center=(25, y))
@@ -136,10 +136,10 @@ class QuantumCircuitUI(BaseUI):
                     pygame.draw.rect(self.Screen, COLOR.GRAY, rect, 3)
 
         # draw hovering
-        for xi, line in enumerate(self.App.CurrentCircuit):
-            for yi, key in enumerate(line):
-                collision_rect = self.GetCollisionRect(xi, yi)
-                pygame.draw.rect(self.Screen, COLOR.WHITE, collision_rect, 3)
+        # for xi, line in enumerate(self.App.CurrentCircuit):
+        #     for yi, key in enumerate(line):
+        #         collision_rect = self.GetCollisionRect(xi, yi)
+        #         pygame.draw.rect(self.Screen, COLOR.WHITE, collision_rect, 3)
 
     def GetModuleCenter(self, xi, yi):
         x = LINEMARGINLEFT + MODULEMARGIN + xi * (MODULEMARGIN + MODULE_SIZE)
